@@ -583,6 +583,10 @@ static void _prepare_and_flash_mbr_gpt()
 		_create_gpt_partition(gpt, &gpt_idx, &gpt_next_lba, part_info.hos_size << 11, true, "hos_data", basic_part_guid, NULL, true);
 		// Clear non-standard Windows MBR attributes. bit4: Read only, bit5: Shadow copy, bit6: Hidden, bit7: No drive letter.
 		gpt->entries[gpt_idx - 1].part_guid[7] = 0;
+		if (part_info.and_size || part_info.l4t_size) {
+			// Set legacy bootable attribute, necessary for uboot to consider this partition
+			gpt->entries[gpt_idx - 1].attrs = 4;
+		}
 	}
 
 	if(part_info.emu_sd_size){
@@ -609,6 +613,11 @@ static void _prepare_and_flash_mbr_gpt()
 			_create_gpt_partition(gpt, &gpt_idx, &gpt_next_lba, (emu_sd_size - 1) << 11, false, part_name, basic_part_guid, NULL, true);
 			// clear windows hidden attributes
 			gpt->entries[gpt_idx - 1].part_guid[7] = 0;
+			if ((part_info.and_size || part_info.l4t_size) && !part_info.hos_size && i == 1) {
+				// Set legacy bootable attribute, necessary for uboot to consider this partition
+				// Only set if no dedicated hos_data FAT32 partition so that this partition can be used for booting
+				gpt->entries[gpt_idx - 1].attrs = 4;
+			}
 		}
 	}
 
