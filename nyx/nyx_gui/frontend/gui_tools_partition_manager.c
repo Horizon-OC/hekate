@@ -1062,7 +1062,8 @@ static int _get_available_android_partition()
 	gpt_t *gpt = zalloc(sizeof(gpt_t));
 
 	// Read main GPT.
-	sdmmc_storage_read(&sd_storage, 1, sizeof(gpt_t) >> 9, gpt);
+	sdmmc_storage_t *storage = part_info.drive == DRIVE_SD ? &sd_storage : &emmc_storage;
+	sdmmc_storage_read(storage, 1, sizeof(gpt_t) >> 9, gpt);
 
 	// Check if GPT.
 	if (memcmp(&gpt->header.signature, "EFI PART", 8) || gpt->header.num_part_ents > 128)
