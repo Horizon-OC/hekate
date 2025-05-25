@@ -833,7 +833,6 @@ void dump_emummc_file(emmc_tool_gui_t *gui, u32 resized_cnt, u8 drive)
 
 out_failed:
 	timer = get_tmr_s() - timer;
-	emmc_end();
 
 	if (res)
 	{
@@ -861,6 +860,7 @@ out:
 	free(txt_buf);
 	free(gui->base_path);
 	sd_unmount();
+	emmc_end();
 }
 
 static int _dump_emummc_raw_part(emmc_tool_gui_t *gui, int active_part, int part_idx, u32 sd_part_off, emmc_part_t *part, u32 resized_count, u8 drive)
@@ -1162,7 +1162,6 @@ void dump_emummc_raw(emmc_tool_gui_t *gui, int part_idx, u32 sector_start, u32 r
 
 out_failed:
 	timer = get_tmr_s() - timer;
-	emmc_end();
 
 	if (res)
 	{
@@ -1186,4 +1185,5 @@ out:
 	free(txt_buf);
 	free(gui->base_path);
 	boot_storage_unmount();
+	emmc_end();
 }
