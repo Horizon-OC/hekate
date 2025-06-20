@@ -656,6 +656,8 @@ static void _nyx_load_run()
 		return;
 
 	boot_storage_end();
+	sd_end();
+	emmc_end();
 
 	render_static_bootlogo();
 	display_backlight_brightness(h_cfg.backlight, 1000);
