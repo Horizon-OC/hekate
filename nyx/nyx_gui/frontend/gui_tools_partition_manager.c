@@ -425,6 +425,16 @@ static void _prepare_and_flash_mbr_gpt()
 	mbr_t mbr;
 	u8 random_number[16];
 
+	// Read current MBR.
+	sdmmc_storage_read(storage, 0, 1, &mbr);
+
+	// Copy over metadata if they exist.
+	if (*(u32 *)&part_info.mbr_old.bootstrap[0x80])
+		memcpy(&mbr.bootstrap[0x80], &part_info.mbr_old.bootstrap[0x80], 64);
+	if (*(u32 *)&part_info.mbr_old.bootstrap[0xE0])
+		memcpy(&mbr.bootstrap[0xE0], &part_info.mbr_old.bootstrap[0xE0], 208);
+
+	// Clear the first 16MB.
 	memset((void *)SDMMC_UPPER_BUFFER, 0, AU_ALIGN_BYTES);
 
 	s32 l4t_idx    = -1;
