@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 Rajko Stojadinovic
- * Copyright (c) 2018-2024 CTCaer
+ * Copyright (c) 2018-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -36,12 +36,12 @@
 #include "gui.h"
 #include "fe_emummc_tools.h"
 #include "../config.h"
+#include "../hos/hos.h"
 #include <libs/fatfs/diskio.h>
 #include <libs/fatfs/ff.h>
 #include <utils/sprintf.h>
 
-#define OUT_FILENAME_SZ 128
-#define NAND_PATROL_SECTOR 0xC20
+#define OUT_FILENAME_SZ      128
 #define NUM_SECTORS_PER_ITER 8192 // 4MB Cache.
 
 extern hekate_config h_cfg;
