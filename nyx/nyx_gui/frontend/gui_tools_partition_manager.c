@@ -52,7 +52,7 @@
 
 #define SECTORS_PER_GB   0x200000
 
-#define HOS_MIN_SIZE_MB        2048
+#define HOS_FAT_MIN_SIZE_MB    2048
 #define ANDROID_SYSTEM_SIZE_MB 6144 // 6 GB. Fits both Legacy (4912MB) and Dynamic (6144MB) partition schemes.
 #define ANDROID_SYSTEM_SIZE_LEGACY_MB 4912
 
@@ -69,6 +69,8 @@ extern volatile nyx_storage_t *nyx_str;
 
 typedef struct _partition_ctxt_t
 {
+	sdmmc_storage_t *storage;
+
 	u32 total_sct;
 	// total sectors available for partitions (e.g. total sectors - gpt - backup gpt, and aligned to 16mb)
 	u32 total_sct_available; 
@@ -79,6 +81,8 @@ typedef struct _partition_ctxt_t
 	u8 drive;
 
 	u32 hos_os_og_size;
+
+	s32 hos_min_size;
 
 	s32 hos_size;
 	u32 emu_size;
@@ -385,8 +389,7 @@ static void _create_gpt_partition(gpt_t *gpt, u32 *gpt_idx, u32 *curr_part_lba, 
 	_ctowcs(name, gpt->entries[*gpt_idx].name, 36);
 
 	if(clear){
-		sdmmc_storage_t *storage = part_info.drive == DRIVE_SD ? &sd_storage : &emmc_storage;
-		sdmmc_storage_write(storage, *curr_part_lba, 0x800, (void *)SDMMC_UPPER_BUFFER);
+		sdmmc_storage_write(part_info.storage, *curr_part_lba, 0x800, (void *)SDMMC_UPPER_BUFFER);
 	}
 
 	(*curr_part_lba) += size_lba;
@@ -1076,8 +1079,7 @@ static int _get_available_android_partition()
 	gpt_t *gpt = zalloc(sizeof(gpt_t));
 
 	// Read main GPT.
-	sdmmc_storage_t *storage = part_info.drive == DRIVE_SD ? &sd_storage : &emmc_storage;
-	sdmmc_storage_read(storage, 1, sizeof(gpt_t) >> 9, gpt);
+	sdmmc_storage_read(part_info.storage, 1, sizeof(gpt_t) >> 9, gpt);
 
 	// Check if GPT.
 	if (memcmp(&gpt->header.signature, "EFI PART", 8) || gpt->header.num_part_ents > 128)
@@ -3734,6 +3736,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 
 	char *txt_buf = malloc(SZ_8K);
 
+	part_info.storage = storage;
 	part_info.total_sct = storage->sec_cnt;
 	// reserve 16mb for alignment + last 1mb for backup gpt 
 	part_info.total_sct_available = ALIGN_DOWN(part_info.total_sct - AU_ALIGN_SECTORS - (1 << 11), AU_ALIGN_SECTORS);
@@ -3760,6 +3763,9 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	part_info.auto_assign_free_storage = drive == DRIVE_SD ? true : false;
 
 	part_info.hos_min_size_mb = HOS_MIN_SIZE_MB;
+
+	// Set HOS FAT minimum size.
+	part_info.hos_min_size = HOS_FAT_MIN_SIZE_MB;
 
 	// Read current MBR.
 	mbr_t mbr = { 0 };
