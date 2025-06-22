@@ -35,4 +35,6 @@ void dump_emummc_file(emmc_tool_gui_t *gui, u32 resized_cnt, u8 drive);
 void dump_emummc_raw(emmc_tool_gui_t *gui, int part_idx, u32 sector_start, u32 resized_count, u8 drive);
 void update_emummc_base_folder(char *outFilename, u32 sdPathLen, u32 currPartIdx);
 
+int  emummc_raw_derive_bis_keys();
+
 #endif
