@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2024 CTCaer
+ * Copyright (c) 2019-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -318,8 +318,8 @@ static int _stat_and_copy_files(const char *src, const char *dst, char *path, u3
 				f_close(&fp_src);
 			}
 
-			// If total is > 1GB exit.
-			if (*total_size > (RAM_DISK_SZ - SZ_16M)) // 0x2400000.
+			// If total is > 1.2GB exit.
+			if (*total_size > (RAM_DISK_SZ - SZ_16M)) // Account for alignment.
 			{
 				// Skip next folders and return.
 				res = -1;
@@ -360,6 +360,9 @@ out:
 }
 
 static void _create_gpt_partition(gpt_t *gpt, u32 *gpt_idx, u32 *curr_part_lba, u32 size_lba, bool align, const char *name, const u8 type_guid[16], const u8 guid[16], bool clear){
+	// Reset partition entry.
+	memset(&gpt->entries[*gpt_idx], 0, sizeof(gpt_entry_t));
+
 	memcpy(gpt->entries[*gpt_idx].type_guid, type_guid, 16);
 
 	if(!guid){
@@ -1037,7 +1040,7 @@ static u32 _get_available_l4t_partition()
 	{
 		for (u32 i = 0; i < gpt->header.num_part_ents; i++)
 		{
-			if (!memcmp(gpt->entries[i].name, (char[]) { 'l', 0, '4', 0, 't', 0 }, 6))
+			if (!memcmp(gpt->entries[i].name, (u16[]) { 'l', '4', 't' }, 6))
 			{
 				l4t_flash_ctxt.offset_sct = gpt->entries[i].lba_start;
 				size_sct = (gpt->entries[i].lba_end + 1) - gpt->entries[i].lba_start;
@@ -1083,8 +1086,8 @@ static int _get_available_android_partition()
 	{
 		if (gpt->entries[i].lba_start)
 		{
-			int found  = !memcmp(gpt->entries[i].name, (char[]) { 'b', 0, 'o', 0, 'o', 0, 't', 0 }, 8) ? 2 : 0;
-				found |= !memcmp(gpt->entries[i].name, (char[]) { 'L', 0, 'N', 0, 'X', 0 },                     6) ? 1 : 0;
+			int found  = !memcmp(gpt->entries[i].name, (u16[]) { 'b', 'o', 'o', 't' }, 8) ? 2 : 0;
+				found |= !memcmp(gpt->entries[i].name, (u16[]) { 'L', 'N', 'X' },      6) ? 1 : 0;
 
 			if (found)
 			{
@@ -1340,7 +1343,6 @@ static lv_res_t _action_flash_android_data(lv_obj_t * btns, const char * txt)
 		goto boot_img_not_found;
 	}
 
-
 	// find kernel partition
 	// look for dynamic boot partition
 	_make_part_name(name, "boot", android_flash_ctxt.slot);
@@ -1577,7 +1579,7 @@ static lv_res_t _action_flash_android(lv_obj_t *btn)
 		"These will be deleted after a successful flash.\n"
 		"Do you want to continue?");
 
-	lv_mbox_add_btns(mbox, mbox_btn_map,  _action_flash_android_data);
+	lv_mbox_add_btns(mbox, mbox_btn_map, _action_flash_android_data);
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_set_top(mbox, true);
 
@@ -3076,8 +3078,8 @@ static void _create_mbox_check_files_total_size(u8 drive)
 		part_info.skip_backup = true;
 	}
 
-	// Not more than 1.0GB.
-	part_info.backup_possible = !res && !(total_size > (RAM_DISK_SZ - SZ_16M));
+	// Not more than 1.2GB.
+	part_info.backup_possible = !res && !(total_size > (RAM_DISK_SZ - SZ_16M)); // Account for alignment.
 
 	if (part_info.backup_possible)
 	{
