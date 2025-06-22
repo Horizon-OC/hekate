@@ -534,7 +534,7 @@ static void _prepare_and_flash_mbr_gpt()
 
 				// Android Dynamic, 5922MB
 				_make_part_name(part_name, "super", i);
-				_create_gpt_partition(gpt, &gpt_idx, &gpt_next_lba, 0xB91000, true, part_name, linux_part_guid, NULL, true);
+				_create_gpt_partition(gpt, &gpt_idx, &gpt_next_lba, 0xBA0000, true, part_name, linux_part_guid, NULL, true);
 
 				// Android Userdata
 				_make_part_name(part_name, "userdata", i);
