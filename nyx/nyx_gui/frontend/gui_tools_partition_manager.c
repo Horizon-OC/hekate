@@ -128,6 +128,8 @@ typedef struct _partition_ctxt_t
 	lv_obj_t *slider_hos_os;
 	lv_obj_t *slider_emu_sd;
 
+	lv_obj_t *cont_lbl;
+
 	lv_obj_t *lbl_hos;
 	lv_obj_t *lbl_emu;
 	lv_obj_t *lbl_l4t;
@@ -1919,7 +1921,7 @@ static lv_res_t _create_mbox_start_partitioning()
 	lv_mbox_set_recolor_text(mbox, true);
 	lv_obj_set_width(mbox, LV_HOR_RES / 9 * 6);
 
-	lv_mbox_set_text(mbox, "#FF8000 Partition Manager#");
+	lv_mbox_set_text(mbox, "#FF8000 SD Partition Manager#");
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_set_top(mbox, true);
 
@@ -1927,7 +1929,7 @@ static lv_res_t _create_mbox_start_partitioning()
 
 	// Use safety wait if backup is not possible.
 	char *txt_buf = malloc(SZ_4K);
-	strcpy(txt_buf, "#FF8000 Partition Manager#\n\nSafety wait ends in ");
+	strcpy(txt_buf, "#FF8000 SD Partition Manager#\n\nSafety wait ends in ");
 	lv_mbox_set_text(mbox, txt_buf);
 
 	u32 seconds = 5;
@@ -1942,7 +1944,7 @@ static lv_res_t _create_mbox_start_partitioning()
 	}
 
 	lv_mbox_set_text(mbox,
-		"#FF8000 Partition Manager#\n\n"
+		"#FF8000 SD Partition Manager#\n\n"
 		"#FFDD00 Warning: Do you really want to continue?!#\n\n"
 		"Press #FF8000 POWER# to Continue.\nPress #FF8000 VOL# to abort.");
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
@@ -3988,7 +3990,6 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_slider_set_style(slider_emu, LV_SLIDER_STYLE_KNOB, &bar_emu_btn);
 	lv_obj_align(slider_emu, lbl_emu, LV_ALIGN_IN_LEFT_MID, LV_DPI * 3,0);
 	lv_slider_set_action(slider_emu, _action_slider_emu);
-	part_info.slider_emu = slider_hos;
 
 	// Create L4T size slider.
 	lv_obj_t *slider_l4t = lv_slider_create(h1, NULL);
@@ -4000,7 +4001,6 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_slider_set_style(slider_l4t, LV_SLIDER_STYLE_KNOB, &bar_l4t_btn);
 	lv_obj_align(slider_l4t, lbl_l4t, LV_ALIGN_IN_LEFT_MID, LV_DPI * 3, 0);
 	lv_slider_set_action(slider_l4t, _action_slider_l4t);
-	part_info.slider_l4t = slider_l4t;
 
 	// Create Android size slider.
 	lv_obj_t *slider_and = lv_slider_create(h1, NULL);
@@ -4016,7 +4016,12 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_slider_set_style(slider_and, LV_SLIDER_STYLE_KNOB, &bar_and_btn);
 	lv_obj_align(slider_and, lbl_and, LV_ALIGN_IN_LEFT_MID, LV_DPI * 3, 0);
 	lv_slider_set_action(slider_and, _action_slider_and);
-	part_info.slider_and = slider_and;
+
+	// Create container for the labels.
+	lv_obj_t *cont_lbl = lv_cont_create(h1, NULL);
+	lv_cont_set_fit(cont_lbl, false, true);
+	lv_obj_set_width(cont_lbl, LV_DPI * 3 / 2);
+	part_info.cont_lbl = cont_lbl;
 
 	// Create emuSD size slider
 	lv_obj_t *slider_emu_sd = lv_slider_create(h1, NULL);
@@ -4045,7 +4050,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	part_info.lbl_hos_os = lbl_sl_hos_os;
 
 	// Create HOS size label.
-	lv_obj_t *lbl_sl_hos = lv_label_create(h1, NULL);
+	lv_obj_t *lbl_sl_hos = lv_label_create(cont_lbl, NULL);
 	lv_label_set_recolor(lbl_sl_hos, true);
 	s_printf(txt_buf, "#96FF00 %d GiB#", part_info.hos_size >> 10);
 	lv_label_set_text(lbl_sl_hos, txt_buf);
