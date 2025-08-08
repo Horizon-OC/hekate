@@ -23,9 +23,6 @@
 #include <libs/fatfs/ff.h>
 #include <storage/boot_storage.h>
 
-extern hekate_config h_cfg;
-extern nyx_config n_cfg;
-
 void set_default_configuration()
 {
 	h_cfg.t210b01 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01;

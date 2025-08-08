@@ -27,7 +27,6 @@
 #include <libs/fatfs/ff.h>
 #include <storage/emummc_file_based.h>
 
-extern hekate_config h_cfg;
 emummc_cfg_t emu_cfg = { 0 };
 
 void emummc_load_cfg()

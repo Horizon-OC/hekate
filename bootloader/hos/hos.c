@@ -31,8 +31,6 @@
 #include "../storage/emusd.h"
 #include <storage/boot_storage.h>
 
-extern hekate_config h_cfg;
-
 //#define DPRINTF(...) gfx_printf(__VA_ARGS__)
 #define DPRINTF(...)
 

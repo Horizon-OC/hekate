@@ -47,8 +47,6 @@
 #include <utils/types.h>
 
 extern volatile boot_cfg_t *b_cfg;
-extern hekate_config h_cfg;
-extern nyx_config n_cfg;
 
 lv_obj_t *ums_mbox;
 

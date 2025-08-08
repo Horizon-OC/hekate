@@ -26,8 +26,6 @@
 #include "../storage/emummc.h"
 #include "../storage/emusd.h"
 
-extern hekate_config h_cfg;
-
 enum emuMMC_Type
 {
 	EmummcType_None           = 0,

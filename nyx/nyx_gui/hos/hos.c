@@ -26,8 +26,6 @@
 #include <storage/boot_storage.h>
 #include "../config.h"
 
-extern hekate_config h_cfg;
-
 u8 *cal0_buf = NULL;
 static u8 *bis_keys = NULL;
 
