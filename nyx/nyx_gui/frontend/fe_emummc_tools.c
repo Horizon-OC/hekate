@@ -44,7 +44,6 @@
 #define OUT_FILENAME_SZ      128
 #define NUM_SECTORS_PER_ITER 8192 // 4MB Cache.
 
-extern hekate_config h_cfg;
 extern volatile boot_cfg_t *b_cfg;
 
 static int _emummc_resize_user(emmc_tool_gui_t *gui, u32 user_offset, u32 resized_cnt, sdmmc_storage_t *raw_based_storage, u32 raw_based_sector_offset, const char *file_based_path, u8 drive){
