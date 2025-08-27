@@ -1641,7 +1641,7 @@ static lv_res_t _create_change_emummc_window(lv_obj_t *btn_caller)
 		emummc_img->part_type[i - 1] = mbr->partitions[i].type;
 	}
 
-	emummc_img->dirlist = dirlist("emuMMC", NULL, false, true);
+	emummc_img->dirlist = dirlist("emuMMC", NULL, DIR_SHOW_DIRS);
 
 	if (!emummc_img->dirlist)
 		goto out0;
