@@ -1213,9 +1213,6 @@ static u32 _get_available_l4t_partition()
 				size_sct = (gpt->entries[i].lba_end + 1) - gpt->entries[i].lba_start;
 				break;
 			}
-
-			if (i > 126)
-				break;
 		}
 	}
 	else
@@ -1262,9 +1259,6 @@ static int _get_available_android_partition()
 				return found;
 			}
 		}
-
-		if (i > 126)
-			break;
 	}
 
 out:
@@ -1698,6 +1692,7 @@ dtb_not_found:
 		}
 		free(buf);
 	}
+	free(rec);
 
 error:
 	if (boot_recovery)
