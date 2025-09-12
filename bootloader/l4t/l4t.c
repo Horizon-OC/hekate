@@ -1018,6 +1018,8 @@ void launch_l4t(const ini_sec_t *ini_sec, int entry_idx, int is_list, bool t210b
 
 	// Done loading bootloaders/firmware.
 	boot_storage_end();
+	sd_end();
+	emmc_end();
 
 	// We don't need AHB aperture open.
 	mc_disable_ahb_redirect();

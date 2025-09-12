@@ -209,6 +209,8 @@ static void _launch_payload(char *path, bool update, bool clear_screen)
 		goto out;
 
 	boot_storage_end();
+	sd_end();
+	emmc_end();
 
 	if (size < 0x30000)
 	{
