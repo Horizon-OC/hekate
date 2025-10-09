@@ -112,7 +112,10 @@ static bool _boot_storage_mount(){
 
 	FRESULT res;
 
-	if(!emmc_get_initialized() && !emmc_initialize(false)){
+	bool prev_emmc_initialized = emmc_get_initialized();
+	bool prev_sd_initialized = sd_get_card_initialized();
+
+	if(!prev_emmc_initialized && !emmc_initialize(false)){
 		goto emmc_init_fail;
 	}
 
@@ -134,7 +137,9 @@ static bool _boot_storage_mount(){
 	}
 
 	if(res != FR_OK){
-		emmc_end();
+		if(!prev_emmc_initialized) {
+			emmc_end();
+		}
 	}
 
 	if(res == FR_OK){
@@ -147,7 +152,9 @@ emmc_init_fail:
 	}
 
 	if(!emmc_mount()){
-		emmc_end();
+		if(!prev_emmc_initialized) {
+			emmc_end();
+		}
 		goto emmc_init_fail2;
 	}
 
@@ -165,7 +172,9 @@ emmc_init_fail2:
 	}
 
 	if(!sd_mount()){
-		sd_end();
+		if(!prev_sd_initialized) {
+			sd_end();
+		}
 		goto out;
 	}
 
@@ -177,7 +186,9 @@ emmc_init_fail2:
 		return true;
 	}
 
-	sd_end();
+	if(!prev_sd_initialized) {
+		sd_end();
+	}
 
 out:
 	return false;
