@@ -18,6 +18,7 @@
 #include <fatfs_cfg.h>
 #include <libs/lvgl/lv_core/lv_obj.h>
 #include <libs/lvgl/lv_objx/lv_btn.h>
+#include <libs/lvgl/lv_objx/lv_btnm.h>
 #include <libs/lvgl/lv_objx/lv_label.h>
 #include <stdlib.h>
 
@@ -1783,8 +1784,8 @@ static void _create_tab_tools_emmc_pkg12(lv_theme_t *th, lv_obj_t *parent)
     lv_btnm_set_style(btnm, LV_BTNM_STYLE_BTN_INA, th->btn.ina);
 	if (hekate_bg)
 	{
-		lv_btn_set_style(btnm, LV_BTN_STYLE_REL, &btn_transp_rel);
-		lv_btn_set_style(btnm, LV_BTN_STYLE_PR, &btn_transp_pr);
+		lv_btnm_set_style(btnm, LV_BTNM_STYLE_BTN_REL, &btn_transp_rel);
+		lv_btnm_set_style(btnm, LV_BTNM_STYLE_BTN_PR, &btn_transp_pr);
 	}
 	lv_coord_t font_h = lv_font_get_height(th->btn.rel->text.font);
     lv_obj_set_size(btnm, 400, font_h + 2 * th->btn.rel->body.padding.ver + 2 * th->bg->body.padding.ver);
