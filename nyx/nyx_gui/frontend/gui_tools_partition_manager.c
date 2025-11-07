@@ -49,10 +49,14 @@
 #include "../hos/hos.h"
 #include "../storage/sfd.h"
 
+#define SECTORS_PER_GB   0x200000
+
 #define AU_ALIGN_SECTORS 0x8000 // 16MB.
 #define AU_ALIGN_BYTES   (AU_ALIGN_SECTORS * SD_BLOCKSIZE)
 
-#define SECTORS_PER_GB   0x200000
+#define HOS_USER_SECTOR      0x53C000
+#define HOS_FAT_MIN_SIZE_MB  2048
+#define HOS_USER_MIN_SIZE_MB 1024
 
 #define HOS_USER_SECTOR        0x53C000
 #define HOS_FAT_MIN_SIZE_MB    2048
