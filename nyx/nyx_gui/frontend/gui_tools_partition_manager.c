@@ -3729,7 +3729,7 @@ static void _create_mbox_check_files_total_size(u8 drive)
 	free(gpt);
 }
 
-static lv_res_t _action_fix_mbr(lv_obj_t *btn)
+static lv_res_t _action_fix_mbr_gpt(lv_obj_t *btn)
 {
 	lv_obj_t *dark_bg = lv_obj_create(lv_scr_act(), NULL);
 	lv_obj_set_style(dark_bg, &mbox_darken);
@@ -3749,9 +3749,11 @@ static lv_res_t _action_fix_mbr(lv_obj_t *btn)
 	gpt_t *gpt = zalloc(sizeof(gpt_t));
 	gpt_header_t gpt_hdr_backup = { 0 };
 
-	bool has_mbr_attributes = false;
-	bool hybrid_mbr_changed = false;
+	bool has_mbr_attributes   = false;
+	bool hybrid_mbr_changed   = false;
 	bool gpt_partition_exists = false;
+	int  gpt_oob_empty_part_no = 0;
+	int  gpt_emummc_migrate_no = 0;
 
 	// Try to init sd card. No need for valid MBR.
 	if (!sd_mount() && !sd_get_card_initialized())
@@ -3797,10 +3799,16 @@ static lv_res_t _action_fix_mbr(lv_obj_t *btn)
 	LIST_INIT(gpt_parsed);
 	for (u32 i = 0; i < gpt->header.num_part_ents; i++)
 	{
-		emmc_part_t *part = (emmc_part_t *)zalloc(sizeof(emmc_part_t));
-
-		if (gpt->entries[i].lba_start < gpt->header.first_use_lba)
+		// Check if partition is out of bounds or empty.
+		if ( gpt->entries[i].lba_start <   gpt->header.first_use_lba ||
+			 gpt->entries[i].lba_start >=  gpt->entries[i].lba_end   ||
+			!gpt->entries[i].lba_end)
+		{
+			gpt_oob_empty_part_no++;
 			continue;
+		}
+
+		emmc_part_t *part = (emmc_part_t *)zalloc(sizeof(emmc_part_t));
 
 		part->index = i;
 		part->lba_start = gpt->entries[i].lba_start;
@@ -3817,6 +3825,7 @@ static lv_res_t _action_fix_mbr(lv_obj_t *btn)
 	// Set FAT and emuMMC partitions.
 	u32 mbr_idx = 1;
 	bool found_hos_data = false;
+	u32 emummc_mbr_part_idx[2] = {0};
 	LIST_FOREACH_ENTRY(emmc_part_t, part, &gpt_parsed, link)
 	{
 		// FatFS simple GPT found a fat partition, set it.
@@ -3824,7 +3833,7 @@ static lv_res_t _action_fix_mbr(lv_obj_t *btn)
 		{
 			mbr[1].partitions[0].type = sd_fs.fs_type == FS_EXFAT ? 0x7 : 0xC;
 			mbr[1].partitions[0].start_sct = part->lba_start;
-			mbr[1].partitions[0].size_sct = (part->lba_end - part->lba_start + 1);
+			mbr[1].partitions[0].size_sct  = part->lba_end - part->lba_start + 1;
 		}
 
 		// FatFS simple GPT didn't find a fat partition as the first one.
@@ -3832,7 +3841,7 @@ static lv_res_t _action_fix_mbr(lv_obj_t *btn)
 		{
 			mbr[1].partitions[0].type = 0xC;
 			mbr[1].partitions[0].start_sct = part->lba_start;
-			mbr[1].partitions[0].size_sct = (part->lba_end - part->lba_start + 1);
+			mbr[1].partitions[0].size_sct  = part->lba_end - part->lba_start + 1;
 			found_hos_data = true;
 		}
 
@@ -3841,7 +3850,11 @@ static lv_res_t _action_fix_mbr(lv_obj_t *btn)
 		{
 			mbr[1].partitions[mbr_idx].type = 0xE0;
 			mbr[1].partitions[mbr_idx].start_sct = part->lba_start;
-			mbr[1].partitions[mbr_idx].size_sct = (part->lba_end - part->lba_start + 1);
+			mbr[1].partitions[mbr_idx].size_sct  = part->lba_end - part->lba_start + 1;
+			if (!strcmp(part->name, "emummc"))
+				emummc_mbr_part_idx[0] = mbr_idx;
+			else
+				emummc_mbr_part_idx[1] = mbr_idx;
 			mbr_idx++;
 		}
 
@@ -3864,13 +3877,21 @@ static lv_res_t _action_fix_mbr(lv_obj_t *btn)
 			(mbr[0].partitions[i].start_sct != mbr[1].partitions[i].start_sct) ||
 			(mbr[0].partitions[i].size_sct  != mbr[1].partitions[i].size_sct))
 		{
-			hybrid_mbr_changed = true;
+			// Check if original MBR already has an emuMMC and use it as source of truth.
+			if (mbr[0].partitions[i].type == 0xE0)
+			{
+				memcpy(&mbr[1].partitions[i], &mbr[0].partitions[i], sizeof(mbr_part_t));
+				gpt_emummc_migrate_no++;
+				continue;
+			}
+			else
+				hybrid_mbr_changed = true;
 			break;
 		}
 	}
 
 check_changes:
-	if (!hybrid_mbr_changed && !has_mbr_attributes)
+	if (!hybrid_mbr_changed && !has_mbr_attributes && !gpt_emummc_migrate_no)
 	{
 		lv_label_set_text(lbl_status, "#96FF00 Warning:# The Hybrid MBR needs no change!#");
 		goto out;
@@ -3878,29 +3899,42 @@ check_changes:
 
 	char *txt_buf = malloc(SZ_16K);
 
-	// Current MBR info.
-	s_printf(txt_buf, "#00DDFF Current MBR Layout:#\n");
-	s_printf(txt_buf + strlen(txt_buf),
-		"Partition 0 - Type: %02x, Start: %08x, Size: %08x\n"
-		"Partition 1 - Type: %02x, Start: %08x, Size: %08x\n"
-		"Partition 2 - Type: %02x, Start: %08x, Size: %08x\n"
-		"Partition 3 - Type: %02x, Start: %08x, Size: %08x\n\n",
-		mbr[0].partitions[0].type, mbr[0].partitions[0].start_sct, mbr[0].partitions[0].size_sct,
-		mbr[0].partitions[1].type, mbr[0].partitions[1].start_sct, mbr[0].partitions[1].size_sct,
-		mbr[0].partitions[2].type, mbr[0].partitions[2].start_sct, mbr[0].partitions[2].size_sct,
-		mbr[0].partitions[3].type, mbr[0].partitions[3].start_sct, mbr[0].partitions[3].size_sct);
+	if (hybrid_mbr_changed)
+	{
+		// Current MBR info.
+		s_printf(txt_buf, "#00DDFF Current MBR Layout:#\n");
+		s_printf(txt_buf + strlen(txt_buf),
+			"Partition 0 - Type: %02x, Start: %08x, Size: %08x\n"
+			"Partition 1 - Type: %02x, Start: %08x, Size: %08x\n"
+			"Partition 2 - Type: %02x, Start: %08x, Size: %08x\n"
+			"Partition 3 - Type: %02x, Start: %08x, Size: %08x\n\n",
+			mbr[0].partitions[0].type, mbr[0].partitions[0].start_sct, mbr[0].partitions[0].size_sct,
+			mbr[0].partitions[1].type, mbr[0].partitions[1].start_sct, mbr[0].partitions[1].size_sct,
+			mbr[0].partitions[2].type, mbr[0].partitions[2].start_sct, mbr[0].partitions[2].size_sct,
+			mbr[0].partitions[3].type, mbr[0].partitions[3].start_sct, mbr[0].partitions[3].size_sct);
 
-	// New MBR info.
-	s_printf(txt_buf + strlen(txt_buf), "#00DDFF New MBR Layout:#\n");
-	s_printf(txt_buf + strlen(txt_buf),
-		"Partition 0 - Type: %02x, Start: %08x, Size: %08x\n"
-		"Partition 1 - Type: %02x, Start: %08x, Size: %08x\n"
-		"Partition 2 - Type: %02x, Start: %08x, Size: %08x\n"
-		"Partition 3 - Type: %02x, Start: %08x, Size: %08x",
-		mbr[1].partitions[0].type, mbr[1].partitions[0].start_sct, mbr[1].partitions[0].size_sct,
-		mbr[1].partitions[1].type, mbr[1].partitions[1].start_sct, mbr[1].partitions[1].size_sct,
-		mbr[1].partitions[2].type, mbr[1].partitions[2].start_sct, mbr[1].partitions[2].size_sct,
-		mbr[1].partitions[3].type, mbr[1].partitions[3].start_sct, mbr[1].partitions[3].size_sct);
+		// New MBR info.
+		s_printf(txt_buf + strlen(txt_buf), "#00DDFF New MBR Layout:#\n");
+		s_printf(txt_buf + strlen(txt_buf),
+			"Partition 0 - Type: %02x, Start: %08x, Size: %08x\n"
+			"Partition 1 - Type: %02x, Start: %08x, Size: %08x\n"
+			"Partition 2 - Type: %02x, Start: %08x, Size: %08x\n"
+			"Partition 3 - Type: %02x, Start: %08x, Size: %08x",
+			mbr[1].partitions[0].type, mbr[1].partitions[0].start_sct, mbr[1].partitions[0].size_sct,
+			mbr[1].partitions[1].type, mbr[1].partitions[1].start_sct, mbr[1].partitions[1].size_sct,
+			mbr[1].partitions[2].type, mbr[1].partitions[2].start_sct, mbr[1].partitions[2].size_sct,
+			mbr[1].partitions[3].type, mbr[1].partitions[3].start_sct, mbr[1].partitions[3].size_sct);
+	}
+	else if (has_mbr_attributes || gpt_emummc_migrate_no || gpt_oob_empty_part_no)
+	{
+		s_printf(txt_buf, "#00DDFF The following need to be corrected:#\n");
+		if (has_mbr_attributes)
+			s_printf(txt_buf + strlen(txt_buf), "- MBR attributes\n");
+		if (gpt_emummc_migrate_no)
+			s_printf(txt_buf + strlen(txt_buf), "- emuMMC GPT Partition address and size\n");
+		if (gpt_oob_empty_part_no)
+			s_printf(txt_buf + strlen(txt_buf), "- GPT OOB/Empty Partitions (removal)\n");
+	}
 
 	lv_label_set_text(lbl_status, txt_buf);
 	lv_label_set_style(lbl_status, &monospace_text);
@@ -3922,6 +3956,8 @@ check_changes:
 
 	if (btn_wait() & BTN_POWER)
 	{
+		bool has_gpt_changes = false;
+
 		sd_mount();
 
 		// Write MBR.
@@ -3933,34 +3969,77 @@ check_changes:
 		{
 			// Clear secret attributes.
 			gpt->entries[0].part_guid[7] = 0;
+			has_gpt_changes = gpt_partition_exists;
 
-			if (gpt_partition_exists)
-			{
-				// Fix CRC32s.
-				u32 entries_size = sizeof(gpt_entry_t) * gpt->header.num_part_ents;
-				gpt->header.part_ents_crc32 = crc32_calc(0, (const u8 *)gpt->entries, entries_size);
-				gpt->header.crc32 = 0; // Set to 0 for calculation.
-				gpt->header.crc32 = crc32_calc(0, (const u8 *)&gpt->header, gpt->header.size);
-
-				gpt_hdr_backup.part_ents_crc32 = gpt->header.part_ents_crc32;
-				gpt_hdr_backup.crc32 = 0; // Set to 0 for calculation.
-				gpt_hdr_backup.crc32 = crc32_calc(0, (const u8 *)&gpt_hdr_backup, gpt_hdr_backup.size);
-
-				// Write main GPT.
-				u32 aligned_entries_size = ALIGN(entries_size, SD_BLOCKSIZE);
-				sdmmc_storage_write(&sd_storage, gpt->header.my_lba, (sizeof(gpt_header_t) + aligned_entries_size) >> 9, gpt);
-
-				// Write backup GPT partition table.
-				sdmmc_storage_write(&sd_storage, gpt_hdr_backup.part_ent_lba, aligned_entries_size >> 9, gpt->entries);
-
-				// Write backup GPT header.
-				sdmmc_storage_write(&sd_storage, gpt_hdr_backup.my_lba, 1, &gpt_hdr_backup);
-			}
-			else
+			if (!has_gpt_changes)
 			{
 				// Only write the relevant sector if the only change is MBR attributes.
 				sdmmc_storage_write(&sd_storage, 2, 1, &gpt->entries[0]);
 			}
+		}
+
+		if (gpt_emummc_migrate_no)
+		{
+			u32 emu_idx = 0;
+			for (u32 i = 0; i < gpt->header.num_part_ents; i++)
+			{
+				if (!memcmp(gpt->entries[i].name, (u16[]) { 'e', 'm', 'u', 'm', 'm', 'c' }, 12))
+				{
+					u32 idx = emummc_mbr_part_idx[emu_idx];
+					gpt->entries[i].lba_start = mbr[0].partitions[idx].start_sct;
+					gpt->entries[i].lba_end   = mbr[0].partitions[idx].start_sct + mbr[0].partitions[idx].size_sct - 1;
+					gpt_emummc_migrate_no--;
+					emu_idx++;
+
+					has_gpt_changes = true;
+				}
+
+				if (i > 126 || !gpt_emummc_migrate_no)
+					break;
+			}
+		}
+
+		if (gpt_oob_empty_part_no)
+		{
+			u32 part_idx = 0;
+			for (u32 i = 0; i < gpt->header.num_part_ents; i++)
+			{
+				if ( gpt->entries[i].lba_start <   gpt->header.first_use_lba ||
+					 gpt->entries[i].lba_start >=  gpt->entries[i].lba_end   ||
+					!gpt->entries[i].lba_end)
+				{
+					continue;
+				}
+
+				if (part_idx != i)
+					memcpy(&gpt->entries[part_idx], &gpt->entries[i], sizeof(gpt_entry_t));
+				part_idx++;
+			}
+			gpt->header.num_part_ents -= gpt_oob_empty_part_no;
+			has_gpt_changes = true;
+		}
+
+		if (has_gpt_changes)
+		{
+			// Fix GPT CRC32s.
+			u32 entries_size = sizeof(gpt_entry_t) * gpt->header.num_part_ents;
+			gpt->header.part_ents_crc32 = crc32_calc(0, (const u8 *)gpt->entries, entries_size);
+			gpt->header.crc32 = 0; // Set to 0 for calculation.
+			gpt->header.crc32 = crc32_calc(0, (const u8 *)&gpt->header, gpt->header.size);
+
+			gpt_hdr_backup.part_ents_crc32 = gpt->header.part_ents_crc32;
+			gpt_hdr_backup.crc32 = 0; // Set to 0 for calculation.
+			gpt_hdr_backup.crc32 = crc32_calc(0, (const u8 *)&gpt_hdr_backup, gpt_hdr_backup.size);
+
+			// Write main GPT.
+			u32 aligned_entries_size = ALIGN(entries_size, SD_BLOCKSIZE);
+			sdmmc_storage_write(&sd_storage, gpt->header.my_lba, (sizeof(gpt_header_t) + aligned_entries_size) >> 9, gpt);
+
+			// Write backup GPT partition table.
+			sdmmc_storage_write(&sd_storage, gpt_hdr_backup.part_ent_lba, aligned_entries_size >> 9, gpt->entries);
+
+			// Write backup GPT header.
+			sdmmc_storage_write(&sd_storage, gpt_hdr_backup.my_lba, 1, &gpt_hdr_backup);
 		}
 
 		sd_unmount();
@@ -3988,7 +4067,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_t *win = nyx_create_standard_window(title_str);
 
 	if(drive == DRIVE_SD){
-		lv_win_add_btn(win, NULL, SYMBOL_MODULES_ALT" Fix Hybrid MBR", _action_fix_mbr);
+		lv_win_add_btn(win, NULL, SYMBOL_MODULES_ALT" Fix Hybrid MBR/GPT", _action_fix_mbr_gpt);
 	}
 
 	static lv_style_t bar_hos_os_bg, bar_hos_bg, bar_emu_bg, bar_l4t_bg, bar_and_bg, bar_emu_sd_bg;
