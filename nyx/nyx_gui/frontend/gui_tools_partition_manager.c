@@ -85,6 +85,7 @@ typedef struct _partition_ctxt_t
 	u32 total_sct_available; 
 
 	u32 alignment;
+	u32 emmc_size_mb;
 	int backup_possible;
 	bool skip_backup;
 	u8 drive;
@@ -4174,11 +4175,20 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_t *h1 = lv_cont_create(win, NULL);
 	lv_obj_set_size(h1, LV_HOR_RES - (LV_DPI * 8 / 10), LV_VER_RES - LV_DPI);
 
+	u32 emmc_size = 0;
+	bool emmc = (drive != DRIVE_SD);
 
 	sdmmc_storage_t *storage = drive == DRIVE_SD ? &sd_storage : &emmc_storage;
 	bool res = false;
 	if(drive == DRIVE_SD){
 		res = sd_mount() || sd_initialize(false);
+		// Probe eMMC size for emuMMC slider limits.
+		if (emmc_initialize(false))
+		{
+			emmc_set_partition(EMMC_GPP);
+			emmc_size = emmc_storage.sec_cnt >> 11;
+			emmc_end();
+		}
 	}else{
 		res = emmc_mount() || emmc_initialize(false);
 	}
@@ -4224,6 +4234,9 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	part_info.auto_assign_free_storage = drive == DRIVE_SD ? true : false;
 
 	part_info.hos_min_size_mb = HOS_MIN_SIZE_MB;
+
+	// Set actual eMMC size.
+	part_info.emmc_size_mb = emmc_size;
 
 	// Set HOS FAT or USER minimum size.
 	part_info.hos_min_size = !emmc? HOS_FAT_MIN_SIZE_MB : HOS_USER_MIN_SIZE_MB;
@@ -4627,5 +4640,5 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	return LV_RES_OK;
 }
 
-lv_res_t create_window_sd_partition_manager(lv_obj_t *btn)   { return create_window_partition_manager(false); }
-lv_res_t create_window_emmc_partition_manager(lv_obj_t *btn) { return create_window_partition_manager(true);  }
+lv_res_t create_window_sd_partition_manager(lv_obj_t *btn)   { return create_window_partition_manager(btn, DRIVE_SD); }
+lv_res_t create_window_emmc_partition_manager(lv_obj_t *btn) { return create_window_partition_manager(btn, DRIVE_EMMC); }
