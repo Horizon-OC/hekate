@@ -54,10 +54,6 @@
 #define AU_ALIGN_SECTORS 0x8000 // 16MB.
 #define AU_ALIGN_BYTES   (AU_ALIGN_SECTORS * SD_BLOCKSIZE)
 
-#define HOS_USER_SECTOR      0x53C000
-#define HOS_FAT_MIN_SIZE_MB  2048
-#define HOS_USER_MIN_SIZE_MB 1024
-
 #define HOS_USER_SECTOR        0x53C000
 #define HOS_FAT_MIN_SIZE_MB    2048
 #define HOS_USER_MIN_SIZE_MB   1024
@@ -192,11 +188,11 @@ static bool _has_gpt(const mbr_t *mbr){
 	return false;
 }
 
-int _copy_file(const char *src, const char *dst, const char *path)
+static FRESULT _copy_file(const char *src, const char *dst, const char *path)
 {
 	FIL fp_src;
 	FIL fp_dst;
-	int res;
+	FRESULT res;
 
 	// Open file for reading.
 	f_chdrive(src);
@@ -234,8 +230,6 @@ int _copy_file(const char *src, const char *dst, const char *path)
 static int _stat_and_copy_files(const char *src, const char *dst, char *path, u32 *total_files, u32 *total_size, lv_obj_t **labels)
 {
 	FRESULT res;
-	FIL fp_src;
-	FIL fp_dst;
 	DIR dir;
 	u32 dirLength = 0;
 	static FILINFO fno;
@@ -301,6 +295,8 @@ static int _stat_and_copy_files(const char *src, const char *dst, char *path, u3
 
 			if (dst)
 			{
+				FIL fp_src;
+				FIL fp_dst;
 				u32 file_bytes_left = fno.fsize;
 
 				// Open file for writing.
@@ -792,8 +788,10 @@ static int _emmc_prepare_and_flash_mbr_gpt()
 
 		return 1;
 	}
-	u8 gpt_idx = user_part->index;
+	u32 gpt_idx = user_part->index;
 	emmc_gpt_free(&gpt_emmc);
+
+	static const u8 linux_part_guid[] = { 0xAF, 0x3D, 0xC6, 0x0F,  0x83, 0x84,  0x72, 0x47,  0x8E, 0x79,  0x3D, 0x69, 0xD8, 0x47, 0x7D, 0xE4 };
 
 	// HOS USER partition.
 	u32 curr_part_lba = gpt->entries[gpt_idx].lba_start;
@@ -808,66 +806,66 @@ static int _emmc_prepare_and_flash_mbr_gpt()
 		u32 l4t_size = part_info.l4t_size << 11;
 		if (!part_info.and_size)
 			l4t_size -= 0x800; // Reserve 1MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, l4t_size, "l4t", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, l4t_size, false, "l4t", linux_part_guid, NULL, true);
 	}
 
 	if (part_info.and_size && part_info.and_dynamic)
 	{
 		// Android Linux Kernel partition. 64MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,  0x20000, "boot", 8);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x20000, false, "boot", linux_part_guid, NULL, true);
 
 		// Android Recovery partition. 64MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,  0x20000, "recovery", 16);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x20000, false, "recovery", linux_part_guid, NULL, true);
 
 		// Android Device Tree Reference partition. 1MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,    0x800, "dtb", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x800, false, "dtb", linux_part_guid, NULL, true);
 
 		// Android Misc partition. 3MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,   0x1800, "misc", 8);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x1800, false, "misc", linux_part_guid, NULL, true);
 
 		// Android Cache partition. 60MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,  0x1E000, "cache", 10);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x1E000, false, "cache", linux_part_guid, NULL, true);
 
 		// Android Super dynamic partition. 5952MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0xBA0000, "super", 10);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0xBA0000, false, "super", linux_part_guid, NULL, true);
 
 		// Android Userdata partition.
 		u32 uda_size = (part_info.and_size << 11) - 0xC00000; // Subtract the other partitions (6144MB).
 		uda_size -= 0x800; // Reserve 1MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, uda_size, "userdata", 16);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, uda_size, false, "userdata", linux_part_guid, NULL, true);
 	}
 	else if (part_info.and_size)
 	{
 		// Android Vendor partition. 1GB
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x200000, "vendor", 12);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x200000, false, "vendor", linux_part_guid, NULL, true);
 
 		// Android System partition. 3GB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x600000, "APP", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x600000, false, "APP", linux_part_guid, NULL, true);
 
 		// Android Linux Kernel partition. 32MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,  0x10000, "LNX", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x10000, false, "LNX", linux_part_guid, NULL, true);
 
 		// Android Recovery partition. 64MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,  0x20000, "SOS", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x20000, false, "SOS", linux_part_guid, NULL, true);
 
 		// Android Device Tree Reference partition. 1MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,    0x800, "DTB", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x800, false, "DTB", linux_part_guid, NULL, true);
 
 		// Android Encryption partition. 16MB.
 		// Note: 16MB size is for aligning UDA. If any other tiny partition must be added, it should split the MDA one.
 		sdmmc_storage_write(&emmc_storage, curr_part_lba, 0x8000, (void *)SDMMC_UPPER_BUFFER); // Clear the whole of it.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,   0x8000, "MDA", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x8000, false, "MDA", linux_part_guid, NULL, true);
 
 		// Android Cache partition. 700MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x15E000, "CAC", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x15E000, false, "CAC", linux_part_guid, NULL, true);
 
 		// Android Misc partition. 3MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba,   0x1800, "MSC", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, 0x1800, false, "MSC", linux_part_guid, NULL, true);
 
 		// Android Userdata partition.
 		u32 uda_size = (part_info.and_size << 11) - 0x998000; // Subtract the other partitions (4912MB).
 		uda_size -= 0x800; // Reserve 1MB.
-		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, uda_size, "UDA", 6);
+		_create_gpt_partition(gpt, &gpt_idx, &curr_part_lba, uda_size, false, "UDA", linux_part_guid, NULL, true);
 	}
 
 	// Clear the rest of GPT partition table.
@@ -1697,7 +1695,6 @@ dtb_not_found:
 		}
 		free(buf);
 	}
-	free(rec);
 
 error:
 	if (boot_recovery)
@@ -2036,7 +2033,7 @@ static bool _derive_bis_keys(gpt_t *gpt)
 	if (memcmp(&cal0->magic, "CAL0", 4))
 	{
 		// Clear EKS keys.
-		hos_eks_clear(HOS_KB_VERSION_MAX);
+		hos_eks_clear(HOS_MKEY_VER_MAX);
 		res = false;
 	}
 
@@ -2482,9 +2479,9 @@ static lv_res_t _emmc_create_mbox_start_partitioning()
 	lv_obj_set_size(dark_bg, LV_HOR_RES, LV_VER_RES);
 
 	static const char *mbox_btn_map[] =  { "\251", "\222OK", "\251", "" };
-	static const char *mbox_btn_map1[] = { "\251", "\222Flash Linux", "\222Flash Android", "\221OK", "" };
-	static const char *mbox_btn_map2[] = { "\251", "\222Flash Linux", "\221OK", "" };
-	static const char *mbox_btn_map3[] = { "\251", "\222Flash Android", "\221OK", "" };
+	static const char *mbox_btn_map1[] = { "\222Flash Linux", "\222Flash Android", "\221OK", "" };
+	static const char *mbox_btn_map2[] = { "\222Flash Linux", "\221OK", "" };
+	static const char *mbox_btn_map3[] = { "\222Flash Android", "\221OK", "" };
 	lv_obj_t *mbox = lv_mbox_create(dark_bg, NULL);
 	lv_mbox_set_recolor_text(mbox, true);
 	lv_obj_set_width(mbox, LV_HOR_RES / 9 * 6);
@@ -2585,7 +2582,7 @@ no_hos_user_part:
 	}
 
 	// Initialize BIS for eMMC. BIS keys should be already in place.
-	nx_emmc_bis_init(user_part, true, 0);
+	nx_emmc_bis_init(user_part, true, &emmc_storage, 0);
 
 	// Set BIS size for FatFS.
 	u32 user_sectors = user_part->lba_end - user_part->lba_start + 1;
@@ -2690,7 +2687,7 @@ static lv_res_t _create_mbox_partitioning_option0(lv_obj_t *btns, const char *tx
 		return LV_RES_OK;
 	case 1:
 		mbox_action(btns, txt);
-		_sd_create_mbox_start_partitioning();
+		_create_mbox_start_partitioning();
 		break;
 	case 2:
 		mbox_action(btns, txt);
@@ -2710,7 +2707,7 @@ static lv_res_t _create_mbox_partitioning_option1(lv_obj_t *btns, const char *tx
 	{
 		mbox_action(btns, txt);
 		if (!part_info.emmc)
-			_sd_create_mbox_start_partitioning();
+			_create_mbox_start_partitioning();
 		else
 			_emmc_create_mbox_start_partitioning();
 		return LV_RES_INV;
@@ -4224,7 +4221,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	part_info.emmc_is_64gb = fuse_read_hw_type() == FUSE_NX_HW_TYPE_AULA;
 	part_info.auto_assign_free_storage = drive == DRIVE_SD ? true : false;
 
-	part_info.hos_min_size_mb = HOS_MIN_SIZE_MB;
+	part_info.hos_min_size_mb = !emmc ? HOS_FAT_MIN_SIZE_MB : HOS_USER_MIN_SIZE_MB;
 
 	// Set actual eMMC size.
 	part_info.emmc_size_mb = emmc_size;
