@@ -2478,7 +2478,7 @@ void nyx_load_and_run()
 	}
 	else
 	{
-		// Alternate DRAM frequencies. Saves 280 mW.
+		// Alternate DRAM frequencies. Total stall < 1ms. Saves 300+ mW.
 		while (true)
 		{
 			minerva_change_freq(FREQ_1600);  // Takes 295 us.
@@ -2486,6 +2486,7 @@ void nyx_load_and_run()
 			lv_task_handler();
 
 			minerva_change_freq(FREQ_800);   // Takes 80 us.
+			usleep(125); // Min 20us.
 		}
 	}
 }
