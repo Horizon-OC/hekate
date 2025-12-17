@@ -343,18 +343,6 @@ void pkg1_warmboot_patch(void *hos_ctxt)
 		*(vu32 *)(ctxt->pkg1_id->warmboot_base + warmboot_patchset[i].off) = warmboot_patchset[i].val;
 }
 
-static void _warmboot_filename(char *out, u32 fuses)
-{
-	if (fuses < 16)
-	{
-		out[19] = '0';
-		itoa(fuses, &out[19 + 1], 16);
-	}
-	else
-		itoa(fuses, &out[19], 16);
-	strcat(out, ".bin");
-}
-
 int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mkey)
 {
 	launch_ctxt_t *ctxt = (launch_ctxt_t *)hos_ctxt;
@@ -362,11 +350,9 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 
 	if (h_cfg.t210b01)
 	{
-		u32 pa_id;
-		u32 fuses_max = 32; // Current ODM7 max.
 		u8  burnt_fuses = bit_count(fuse_read_odm(7));
 
-		// Save current warmboot in storage cache (MWS) and check if another one is needed.
+		// Check if not overridden.
 		if (!ctxt->warmboot)
 		{
 			char path[128];
@@ -386,7 +372,7 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 				u32 tmp_fuses = burnt_fuses;
 				while (true)
 				{
-					_warmboot_filename(path, burnt_fuses);
+					_warmboot_filename(path, tmp_fuses);
 					if (!f_stat(path, NULL))
 					{
 						ctxt->warmboot = emusd_file_read(path + 6, &ctxt->warmboot_size);
@@ -398,7 +384,7 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 					tmp_fuses++;
 				}
 
-				// Check if proper warmboot firmware was not found.
+				// Check if match was found.
 				if (!ctxt->warmboot)
 					res = 0;
 			}
@@ -408,7 +394,7 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 
 		// Configure warmboot parameters. Anything lower than 6.0.0 is not supported.
 		// From 7.0.0 and up, it's not derived from PA segment but it's 0x21 * fuses.
-		pa_id = 0x21 * burnt_fuses;
+		u32 pa_id = 0x21 * burnt_fuses;
 		if (burnt_fuses <= 8) // Old method.
 			pa_id -= 0x60;
 
