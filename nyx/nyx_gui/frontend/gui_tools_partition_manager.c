@@ -381,7 +381,7 @@ static void _create_gpt_partition(gpt_t *gpt, u32 *gpt_idx, u32 *curr_part_lba, 
 
 	if(!guid){
 		u8 random_number[16];
-		se_gen_prng128(random_number);
+		se_rng_pseudo(random_number, SE_RNG_BLOCK_SIZE);
 		memcpy(gpt->entries[*gpt_idx].part_guid, random_number, 16);
 	}else{
 		memcpy(gpt->entries[*gpt_idx].part_guid, guid, 16);
@@ -429,7 +429,7 @@ static void _prepare_and_flash_mbr_gpt()
 	sdmmc_storage_t *storage = part_info.drive == DRIVE_SD ? &sd_storage : &emmc_storage;
 
 	mbr_t mbr;
-	u8 random_number[16];
+	u8 random_number[SE_RNG_BLOCK_SIZE];
 
 	// Read current MBR.
 	sdmmc_storage_read(storage, 0, 1, &mbr);
@@ -459,7 +459,7 @@ static void _prepare_and_flash_mbr_gpt()
 	gpt->header.last_use_lba = storage->sec_cnt - 0x800 - 1;
 	gpt->header.part_ent_lba = 2;
 	gpt->header.part_ent_size = 128;
-	se_gen_prng128(random_number);
+	se_rng_pseudo(random_number, SE_RNG_BLOCK_SIZE);
 	memcpy(gpt->header.disk_guid, random_number, 10);
 	memcpy(gpt->header.disk_guid + 10, "NYXGPT", 6);
 
@@ -666,7 +666,7 @@ static void _prepare_and_flash_mbr_gpt()
 	if(part_info.drive == DRIVE_SD){
 		// on sd, add hos_data, l4t and emummc partitions to mbr, if possible
 		memset(&mbr, 0, sizeof(mbr));
-		se_gen_prng128(random_number);
+		se_rng_pseudo(random_number, SE_RNG_BLOCK_SIZE);
 		memcpy(&mbr.signature, random_number, 4);
 
 		mbr.boot_signature = 0xaa55;
@@ -708,7 +708,7 @@ static void _prepare_and_flash_mbr_gpt()
 		memset(&mbr, 0, sizeof(mbr));
 
 		if(hos_idx != -1 || emu_sd_idx[0] != -1){
-			se_gen_prng128(random_number);
+			se_rng_pseudo(random_number, SE_RNG_BLOCK_SIZE);
 			memcpy(&mbr.signature, random_number, 4);
 		}
 
@@ -2323,7 +2323,7 @@ static lv_res_t _create_mbox_start_partitioning()
 			mbr.partitions[0].start_sct = emu_sd_start - emu_sd_mbr_start;
 			mbr.partitions[0].size_sct  = emu_sd_size;
 			mbr.boot_signature = 0xaa55;
-			se_gen_prng128(random_number);
+			se_rng_pseudo(random_number, SE_RNG_BLOCK_SIZE);
 			memcpy(&mbr.signature, random_number, 4);
 
 			sdmmc_storage_write(storage, emu_sd_mbr_start, 1, &mbr);
