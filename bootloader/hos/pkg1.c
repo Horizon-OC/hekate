@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 st4rk
- * Copyright (c) 2018-2025 CTCaer
+ * Copyright (c) 2018-2026 CTCaer
  * Copyright (c) 2018 balika011
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@
 #include "pkg1.h"
 #include "../config.h"
 #include <libs/compr/lz4.h>
+
+extern hekate_config h_cfg;
 
 // Secmon package2 signature/hash checks patches for Erista.
 #define SM_100_ADR 0x4002B020 // Original: 0x40014020.
@@ -283,7 +285,7 @@ void pkg1_secmon_patch(void *hos_ctxt, u32 secmon_base, bool t210b01)
 	else if (t210b01)
 	{
 		// For T210B01 we patch 6.X.X as is. Otherwise we decompress the program payload.
-		if (ctxt->pkg1_id->mkey      == HOS_MKEY_VER_600)
+		if (ctxt->pkg1_id->mkey == HOS_MKEY_VER_600)
 			secmon_patchset = _secmon_6_mariko_patchset;
 		else if (ctxt->pkg1_id->mkey == HOS_MKEY_VER_620)
 			secmon_patchset = _secmon_620_mariko_patchset;
@@ -296,7 +298,7 @@ void pkg1_secmon_patch(void *hos_ctxt, u32 secmon_base, bool t210b01)
 			// Get size of compressed program payload and set patch offset.
 			u32 idx = ctxt->pkg1_id->mkey - HOS_MKEY_VER_700;
 			u32 patch_offset = TZRAM_PROG_PK2_SIG_PATCH;
-			if (ctxt->pkg1_id->mkey >= HOS_MKEY_VER_1210 || !memcmp(ctxt->pkg1_id->id, "20200303", 8)) //TODO: Add 11.0.0 support.
+			if (ctxt->pkg1_id->mkey > HOS_MKEY_VER_910 || !memcmp(ctxt->pkg1_id->id, "20200303", 8)) //TODO: Add 11.0.0 support.
 			{
 				idx++;
 				patch_offset = TZRAM_PROG_PK2_SIG_PATCH_1000;
@@ -343,6 +345,18 @@ void pkg1_warmboot_patch(void *hos_ctxt)
 		*(vu32 *)(ctxt->pkg1_id->warmboot_base + warmboot_patchset[i].off) = warmboot_patchset[i].val;
 }
 
+static void _warmboot_filename(char *out, u32 fuses)
+{
+	if (fuses < 16)
+	{
+		out[19] = '0';
+		itoa(fuses, &out[19 + 1], 16);
+	}
+	else
+		itoa(fuses, &out[19], 16);
+	strcat(out, ".bin");
+}
+
 int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mkey)
 {
 	launch_ctxt_t *ctxt = (launch_ctxt_t *)hos_ctxt;
@@ -350,9 +364,11 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 
 	if (h_cfg.t210b01)
 	{
+		u32 pa_id;
+		u32 fuses_max = 32; // Current ODM7 max.
 		u8  burnt_fuses = bit_count(fuse_read_odm(7));
 
-		// Check if not overridden.
+		// Save current warmboot in storage cache (MWS) and check if another one is needed.
 		if (!ctxt->warmboot)
 		{
 			char path[128];
@@ -360,7 +376,7 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 			_warmboot_filename(path, fuses_fw);
 
 			// Check if warmboot fw exists and save it.
-			if (ctxt->warmboot_size && f_stat(path, NULL))
+			if (ctxt->warmboot_size && warmboot_base && f_stat(path, NULL))
 			{
 				f_mkdir("emusd:warmboot_mariko");
 				sd_save_to_file((void *)warmboot_base, ctxt->warmboot_size, path);
@@ -372,7 +388,7 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 				u32 tmp_fuses = burnt_fuses;
 				while (true)
 				{
-					_warmboot_filename(path, tmp_fuses);
+					_warmboot_filename(path, burnt_fuses);
 					if (!f_stat(path, NULL))
 					{
 						ctxt->warmboot = emusd_file_read(path + 6, &ctxt->warmboot_size);
@@ -384,7 +400,7 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 					tmp_fuses++;
 				}
 
-				// Check if match was found.
+				// Check if proper warmboot firmware was not found.
 				if (!ctxt->warmboot)
 					res = 0;
 			}
@@ -392,11 +408,16 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 				burnt_fuses = fuses_fw;
 		}
 
-		// Configure warmboot parameters. Anything lower than 6.0.0 is not supported.
-		// From 7.0.0 and up, it's not derived from PA segment but it's 0x21 * fuses.
-		u32 pa_id = 0x21 * burnt_fuses;
-		if (burnt_fuses <= 8) // Old method.
-			pa_id -= 0x60;
+		// Configure Warmboot parameters. Anything lower is not supported.
+		switch (burnt_fuses)
+		{
+		case 7 ... 8:
+			pa_id = 0x21 * (burnt_fuses - 3) + 3;
+			break;
+		default: // From 7.0.0 and up PA id is 0x21 multiplied with fuses.
+			pa_id = 0x21 * burnt_fuses;
+			break;
+		}
 
 		// Set Warmboot Physical Address ID and lock SECURE_SCRATCH32 register.
 		PMC(APBDEV_PMC_SECURE_SCRATCH32) = pa_id;
@@ -404,16 +425,15 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 	}
 	else
 	{
-		// Set Warmboot address in PMC if required.
+		// Set warmboot address in PMC if required.
 		if (mkey <= HOS_MKEY_VER_301)
 			PMC(APBDEV_PMC_SCRATCH1) = warmboot_base;
 
-		// Set Warmboot Physical Address ID for 3.0.0 - 3.0.2. For 4.0.0 and up, secmon does it.
-		// The check is already patched so it's actually irrelevant.
+		// Set Warmboot Physical Address ID for 3.0.0 - 3.0.2.
 		if (mkey == HOS_MKEY_VER_300)
-			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0xE3;  // Warmboot 3.0.0 PA ID.
+			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0xE3;  // Warmboot 3.0.0 PA address id.
 		else if (mkey == HOS_MKEY_VER_301)
-			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0x104; // Warmboot 3.0.1/.2 PA ID.
+			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0x104; // Warmboot 3.0.1/.2 PA address id.
 	}
 
 	return res;
