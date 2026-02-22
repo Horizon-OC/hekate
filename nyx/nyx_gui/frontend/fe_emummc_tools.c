@@ -335,10 +335,11 @@ void update_emummc_base_folder(char *outFilename, u32 sdPathLen, u32 currPartIdx
 
 int emummc_raw_derive_bis_keys()
 {
-	// Generate BIS keys.
-	hos_bis_keygen();
-
 	u8 *cal0_buff = malloc(SZ_64K);
+
+	// Generate BIS keys.
+	if (hos_bis_keygen())
+		goto error;
 
 	// Read and decrypt CAL0 for validation of working BIS keys.
 	emmc_set_partition(EMMC_GPP);
@@ -356,6 +357,7 @@ int emummc_raw_derive_bis_keys()
 	// Check keys validity.
 	if (memcmp(&cal0->magic, "CAL0", 4))
 	{
+error:
 		// Clear EKS keys.
 		hos_eks_clear(HOS_MKEY_VER_MAX);
 

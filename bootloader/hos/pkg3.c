@@ -98,7 +98,7 @@ static int _pkg3_kip1_skip(char ***pkg3_kip1_skip, u32 *pkg3_kip1_skip_num, char
 {
 	int len = strlen(value);
 	if (!len || (*pkg3_kip1_skip_num) >= PKG3_KIP_SKIP_MAX)
-		return 0;
+		return 1;
 
 	// Allocate pointer list memory.
 	if (!(*pkg3_kip1_skip))
@@ -118,11 +118,11 @@ static int _pkg3_kip1_skip(char ***pkg3_kip1_skip, u32 *pkg3_kip1_skip_num, char
 			(*pkg3_kip1_skip)[(*pkg3_kip1_skip_num)++] = c + 1;
 
 			if ((*pkg3_kip1_skip_num) >= PKG3_KIP_SKIP_MAX)
-				return 0;
+				return 1;
 		}
 	}
 
-	return 1;
+	return 0;
 }
 
 int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
@@ -160,13 +160,13 @@ int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
 #ifdef HOS_MARIKO_STOCK_SECMON
 	if (stock && emummc_disabled && (pkg1_old || h_cfg.t210b01)) {
 		free(path1);
-		return 1;
+		return 0;
 	}
 
 #else
 	if (stock && emummc_disabled && pkg1_old) {
 		free(path1);
-		return 1;
+		return 0;
 	}
 
 #endif
@@ -174,7 +174,7 @@ int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
 	// Try to open PKG3.
 	if (f_open(&fp, path1, FA_READ) != FR_OK) {
 		free(path1);
-		return 0;
+		return 1;
 	}
 
 
@@ -284,7 +284,7 @@ int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
 		free(pkg3_kip1_skip);
 		free(path1);
 
-		return 1;
+		return 0;
 	}
 
 	// Failed. Close and free all.
@@ -293,5 +293,5 @@ int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
 	free(pkg3_kip1_skip);
 	free(pkg3);
 
-	return 0;
+	return 1;
 }

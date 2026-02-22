@@ -27,7 +27,6 @@
 #include "../config.h"
 
 u8 *cal0_buf = NULL;
-static u8 *bis_keys = NULL;
 
 static const u8 eks_keyseeds[HOS_MKEY_VER_600 - HOS_MKEY_VER_100 + 1][SE_KEY_128_SIZE] = {
 	{ 0xDF, 0x20, 0x6F, 0x59, 0x44, 0x54, 0xEF, 0xDC, 0x70, 0x74, 0x48, 0x3B, 0x0D, 0xED, 0x9F, 0xD3 }, // 1.0.0.
@@ -174,23 +173,23 @@ static const u8 bis_keyseed[][SE_KEY_128_SIZE] = {
 	{ 0x4D, 0x12, 0xE1, 0x4B, 0x2A, 0x47, 0x4C, 0x1C, 0x09, 0xCB, 0x03, 0x59, 0xF0, 0x15, 0xF4, 0xE4 }  // BIS 2/3 Tweak seed.
 };
 
-bool hos_eks_rw_try(u8 *buf, bool write)
+static int _hos_eks_rw_try(u8 *buf, bool write)
 {
 	for (u32 i = 0; i < 3; i++)
 	{
 		if (!write)
 		{
 			if (sdmmc_storage_read(&sd_storage, 0, 1, buf))
-				return true;
+				return 0;
 		}
 		else
 		{
 			if (sdmmc_storage_write(&sd_storage, 0, 1, buf))
-				return true;
+				return 0;
 		}
 	}
 
-	return false;
+	return 1;
 }
 
 static void _hos_eks_get()
@@ -204,7 +203,7 @@ static void _hos_eks_get()
 	{
 		// Read EKS blob.
 		u8 *mbr = malloc(SD_BLOCKSIZE);
-		if (!hos_eks_rw_try(mbr, false))
+		if (_hos_eks_rw_try(mbr, false))
 			goto out;
 
 		// Decrypt EKS blob.
@@ -242,7 +241,7 @@ static void _hos_eks_save()
 	{
 		// Read EKS blob.
 		u8 *mbr = malloc(SD_BLOCKSIZE);
-		if (!hos_eks_rw_try(mbr, false))
+		if (_hos_eks_rw_try(mbr, false))
 		{
 			if (new_eks)
 			{
@@ -274,7 +273,7 @@ static void _hos_eks_save()
 
 		// Write EKS blob to SD.
 		memcpy(mbr + 0x80, eks, sizeof(hos_eks_mbr_t));
-		hos_eks_rw_try(mbr, true);
+		_hos_eks_rw_try(mbr, true);
 
 		free(eks);
 		free(keys);
@@ -296,7 +295,7 @@ void hos_eks_clear(u32 mkey)
 		{
 			// Read EKS blob.
 			u8 *mbr = malloc(SD_BLOCKSIZE);
-			if (!hos_eks_rw_try(mbr, false))
+			if (_hos_eks_rw_try(mbr, false))
 				goto out;
 
 			// Disable current Master key version.
@@ -309,7 +308,7 @@ void hos_eks_clear(u32 mkey)
 
 			// Write EKS blob to SD.
 			memcpy(mbr + 0x80, eks, sizeof(hos_eks_mbr_t));
-			hos_eks_rw_try(mbr, true);
+			_hos_eks_rw_try(mbr, true);
 
 			free(eks);
 out:
@@ -332,7 +331,7 @@ int hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt)
 	tsec_keys_t tsec_keys;
 
 	if (mkey > HOS_MKEY_VER_MAX)
-		return 0;
+		return 1;
 
 	// Do Mariko keygen.
 	if (h_cfg.t210b01)
@@ -347,7 +346,7 @@ int hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt)
 		// Derive latest pkg2 key.
 		se_aes_unwrap_key(8, 7, package2_keyseed);
 
-		return 1;
+		return 0;
 	}
 
 	// Do Erista keygen.
@@ -386,7 +385,7 @@ int hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt)
 		if (!tsec_ctxt->fw)
 		{
 			EPRINTF("\nFailed to load thk.bin");
-			return 0;
+			return 1;
 		}
 
 		tsec_ctxt->size = 0x1F00;
@@ -410,7 +409,7 @@ int hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt)
 		if (retries > 15)
 		{
 			EPRINTF("\nFailed to get TSEC keys. Please try again.");
-			return 0;
+			return 1;
 		}
 	}
 
@@ -481,7 +480,7 @@ int hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt)
 		se_aes_unwrap_key(11, 13, cmac_keyseed);
 		se_aes_hash_cmac(cmac, SE_KEY_128_SIZE, 11, (void *)eks->ctr, sizeof(eks->ctr) + sizeof(eks->keys));
 		if (!memcmp(eks->cmac, cmac, SE_KEY_128_SIZE))
-			return 0;
+			return 1;
 */
 
 		se_aes_crypt_ecb(13, DECRYPT, tsec_keys.tsec, cmac_keyseed, SE_KEY_128_SIZE);
@@ -522,7 +521,7 @@ int hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt)
 		se_aes_unwrap_key(8, 12, package2_keyseed);
 	}
 
-	return 1;
+	return 0;
 }
 
 static void _hos_validate_mkey()
@@ -569,11 +568,9 @@ int hos_bis_keygen()
 	u32 console_key_slot = 15; // HOS_MKEY_VER_MAX. Only for Erista.
 	tsec_ctxt_t tsec_ctxt = {0};
 
-	if (!bis_keys)
-		bis_keys = malloc(SE_KEY_128_SIZE * 6);
-
 	// Run initial keygen.
-	hos_keygen(NULL, HOS_MKEY_VER_MAX, &tsec_ctxt);
+	if (hos_keygen(NULL, HOS_MKEY_VER_MAX, &tsec_ctxt))
+		return 1;
 
 	// All Mariko use new device keygen. New keygen was introduced in 4.0.0.
 	// We check unconditionally in order to support downgrades.
@@ -614,6 +611,7 @@ int hos_bis_keygen()
 	se_aes_unwrap_key(2, console_key_slot, gen_keyseed_retail);
 
 	// Clear bis keys storage.
+	u8 *bis_keys = malloc(SE_KEY_128_SIZE * 6);
 	memset(bis_keys, 0, SE_KEY_128_SIZE * 6);
 
 	// Generate BIS 0 Keys.
@@ -656,7 +654,7 @@ int hos_bis_keygen()
 	se_aes_key_set(4, bis_keys + (4 * SE_KEY_128_SIZE), SE_KEY_128_SIZE);
 	se_aes_key_set(5, bis_keys + (5 * SE_KEY_128_SIZE), SE_KEY_128_SIZE);
 
-	return 1;
+	return 0;
 }
 
 void hos_bis_keys_clear()
@@ -673,7 +671,8 @@ int hos_dump_cal0()
 		return 1;
 
 	// Generate BIS keys
-	hos_bis_keygen();
+	if (hos_bis_keygen())
+		return 2;
 
 	if (!cal0_buf)
 		cal0_buf = malloc(SZ_64K);
