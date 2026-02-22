@@ -319,7 +319,7 @@ static void _launch_ini_list()
 		goto parse_failed;
 
 	// Check that ini files exist and parse them.
-	if (!ini_parse(&ini_list_sections, "bootloader/ini", true))
+	if (ini_parse(&ini_list_sections, "bootloader/ini", true))
 	{
 		EPRINTF("No .ini files in bootloader/ini!");
 		goto parse_failed;
@@ -796,7 +796,7 @@ static void _auto_launch()
 	emusd_load_cfg();
 
 	// Parse hekate main configuration.
-	if (!ini_parse(&ini_sections, "bootloader/hekate_ipl.ini", false))
+	if (ini_parse(&ini_sections, "bootloader/hekate_ipl.ini", false))
 		goto out; // Can't load hekate_ipl.ini.
 
 	// Load configuration.
@@ -885,7 +885,7 @@ static void _auto_launch()
 		boot_entry_id = 1;
 		bootlogoCustomEntry = NULL;
 
-		if (!ini_parse(&ini_list_sections, "bootloader/ini", true))
+		if (ini_parse(&ini_list_sections, "bootloader/ini", true))
 			goto skip_list;
 
 		LIST_FOREACH_ENTRY(ini_sec_t, ini_sec_list, &ini_list_sections, link)

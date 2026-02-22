@@ -229,7 +229,7 @@ static void _create_autoboot_window()
 
 	// Parse hekate main configuration.
 	LIST_INIT(ini_sections);
-	if (ini_parse(&ini_sections, "bootloader/hekate_ipl.ini", false))
+	if (!ini_parse(&ini_sections, "bootloader/hekate_ipl.ini", false))
 	{
 		LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, &ini_sections, link)
 		{
@@ -273,7 +273,7 @@ static void _create_autoboot_window()
 
 	// Parse all .ini files in ini folder.
 	LIST_INIT(ini_list_sections);
-	if (ini_parse(&ini_list_sections, "bootloader/ini", true))
+	if (!ini_parse(&ini_list_sections, "bootloader/ini", true))
 	{
 		LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, &ini_list_sections, link)
 		{
