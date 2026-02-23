@@ -1864,6 +1864,8 @@ static lv_res_t _action_flash_android_slot_select(lv_obj_t *btn){
 static lv_res_t _action_part_manager_flash_options0(lv_obj_t *btns, const char *txt)
 {
 	int btn_idx = lv_btnm_get_pressed(btns);
+	if (part_info.emmc)
+		btn_idx++;
 
 	switch (btn_idx)
 	{
@@ -1892,6 +1894,8 @@ static lv_res_t _action_part_manager_flash_options0(lv_obj_t *btns, const char *
 static lv_res_t _action_part_manager_flash_options1(lv_obj_t *btns, const char *txt)
 {
 	int btn_idx = lv_btnm_get_pressed(btns);
+	if (part_info.emmc)
+		btn_idx++;
 
 	switch (btn_idx)
 	{
@@ -1918,6 +1922,8 @@ static lv_res_t _action_part_manager_flash_options1(lv_obj_t *btns, const char *
 static lv_res_t _action_part_manager_flash_options2(lv_obj_t *btns, const char *txt)
 {
 	int btn_idx = lv_btnm_get_pressed(btns);
+	if (part_info.emmc)
+		btn_idx++;
 
 	switch (btn_idx)
 	{
