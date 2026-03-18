@@ -786,7 +786,7 @@ int sdmmc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc, u32 bus_wid
 	_mmc_storage_parse_cid(storage); // This needs to be after csd and ext_csd.
 
 /*
-	if (storage->ext_csd.bkops & 0x1 && !(storage->ext_csd.bkops_en & EXT_CSD_AUTO_BKOPS_MASK))
+	if (storage->cid.manfid == 0x11 && storage->ext_csd.bkops && !(storage->ext_csd.bkops_en & EXT_CSD_BKOPS_AUTO))
 	{
 		_mmc_storage_enable_auto_bkops(storage);
 		DPRINTF("[MMC] BKOPS enabled\n");
