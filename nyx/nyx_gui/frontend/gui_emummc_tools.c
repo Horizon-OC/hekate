@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025 CTCaer
+ * Copyright (c) 2019-2026 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -81,7 +81,7 @@ static emummc_part_cfg_t emummc_part_cfg;
 
 static lv_res_t _action_emummc_window_close(lv_obj_t *btn)
 {
-	nyx_win_close_action_custom(btn);
+	nyx_win_close_action(btn);
 
 	// Delete and relaunch main emuMMC window.
 	lv_obj_clean(emummc_parent_cont);
@@ -96,9 +96,9 @@ static void _create_window_emummc()
 
 	lv_obj_t *win;
 	if (emummc_part_cfg.file_based)
-		win = nyx_create_window_custom_close_btn(SYMBOL_DRIVE"  Create SD File emuMMC", _action_emummc_window_close);
+		win = nyx_create_standard_window(SYMBOL_DRIVE"  Create SD File emuMMC", _action_emummc_window_close);
 	else
-		win = nyx_create_window_custom_close_btn(SYMBOL_DRIVE"  Create SD Partition emuMMC", _action_emummc_window_close);
+		win = nyx_create_standard_window(SYMBOL_DRIVE"  Create SD Partition emuMMC", _action_emummc_window_close);
 
 	//Disable buttons.
 	nyx_window_toggle_buttons(win, true);
@@ -183,7 +183,7 @@ static lv_res_t _create_emummc_raw_format(lv_obj_t * btns, const char * txt)
 	int btn_idx = lv_btnm_get_pressed(btns);
 
 	// Delete parent mbox.
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	// Create partition window.
 	if (!btn_idx)
@@ -348,6 +348,7 @@ static lv_res_t _create_emummc_emmc_raw_action(lv_obj_t *btns, const char *txt){
 
 	mbox_action(btns, txt);
 
+	nyx_mbox_action(btns, txt);
 	return LV_RES_INV;
 }
 
@@ -784,6 +785,7 @@ static lv_res_t _create_emummc_select_raw_type_action(lv_obj_t *btns, const char
 		break;
 	}
 
+	nyx_mbox_action(btns, txt);
 	return LV_RES_INV;
 }
 
@@ -889,8 +891,8 @@ static void _change_raw_emummc_part_type()
 static lv_res_t _save_emummc_cfg_mig_mbox_action(lv_obj_t *btns, const char *txt)
 {
 	// Delete main emuMMC and popup windows and relaunch main emuMMC window.
-	lv_obj_clean(emummc_parent_cont);
-	mbox_action(btns, txt);
+	lv_obj_del(emummc_manage_window);
+	nyx_mbox_action(btns, txt);
 
 	(*emummc_tools)(emummc_parent_cont);
 
@@ -1181,7 +1183,7 @@ static lv_res_t _create_emummc_mig1_action(lv_obj_t * btns, const char * txt)
 
 	memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -1197,7 +1199,7 @@ static lv_res_t _create_emummc_mig0_action(lv_obj_t * btns, const char * txt)
 
 	memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -1213,7 +1215,7 @@ static lv_res_t _create_emummc_mig2_action(lv_obj_t * btns, const char * txt)
 
 	memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -1229,7 +1231,7 @@ static lv_res_t _create_emummc_mig3_action(lv_obj_t * btns, const char * txt)
 
 	memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -1245,7 +1247,7 @@ static lv_res_t _create_emummc_mig4_action(lv_obj_t * btns, const char * txt)
 
 	memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -1268,7 +1270,7 @@ static lv_res_t _create_emummc_migrate_action(lv_obj_t * btns, const char * txt)
 	case 2:
 		break;
 	case 3:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		return LV_RES_INV;
 	}
 
@@ -1328,7 +1330,7 @@ static lv_res_t _create_emummc_migrate_action(lv_obj_t * btns, const char * txt)
 	else
 	{
 		s_printf(txt_buf, "No emuMMC or foreign emunand found!\n");
-		lv_mbox_add_btns(mbox, mbox_btn_map3, mbox_action);
+		lv_mbox_add_btns(mbox, mbox_btn_map3, nyx_mbox_action);
 	}
 
 	lv_mbox_set_text(mbox, txt_buf);
@@ -1337,7 +1339,7 @@ static lv_res_t _create_emummc_migrate_action(lv_obj_t * btns, const char * txt)
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_set_top(mbox, true);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -1508,7 +1510,7 @@ static lv_res_t _save_emummc_cfg_mbox_action(lv_obj_t *btns, const char *txt)
 	free(emummc_img->dirlist);
 	free(emummc_img);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	(*emummc_tools)(emummc_parent_cont);
 
@@ -1619,12 +1621,12 @@ static lv_res_t _action_win_change_emummc_close(lv_obj_t *btn)
 	free(emummc_img->dirlist);
 	free(emummc_img);
 
-	return nyx_win_close_action_custom(btn);
+	return nyx_win_close_action(btn);
 }
 
 static lv_res_t _create_change_emummc_window(lv_obj_t *btn_caller)
 {
-	lv_obj_t *win = nyx_create_window_custom_close_btn(SYMBOL_SETTINGS"  Change emuMMC", _action_win_change_emummc_close);
+	lv_obj_t *win = nyx_create_standard_window(SYMBOL_SETTINGS"  Change emuMMC", _action_win_change_emummc_close);
 	lv_win_add_btn(win, NULL, SYMBOL_POWER"  Disable", _save_disable_emummc_cfg_action);
 
 	boot_storage_mount();
@@ -1969,8 +1971,7 @@ out1:
 
 lv_res_t create_tab_emummc_tools(lv_obj_t *parent)
 {
-	emummc_parent_cont = parent;
-	emummc_tools = &create_tab_emummc_tools;
+	lv_obj_t *win = nyx_create_standard_window(SYMBOL_EDIT"  emuMMC Manage", NULL);
 
 	boot_storage_mount();
 
