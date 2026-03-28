@@ -229,7 +229,7 @@ static lv_res_t _ask_resize_action(lv_obj_t *btns, const char *txt){
 		break;
 	}
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -269,7 +269,7 @@ static lv_res_t _create_emummc_raw_action(lv_obj_t * btns, const char * txt)
 		memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 	}
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -307,7 +307,7 @@ static lv_res_t _ask_resize_action_emmc(lv_obj_t *btns, const char *txt){
 		break;
 	}
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -346,9 +346,8 @@ static lv_res_t _create_emummc_emmc_raw_action(lv_obj_t *btns, const char *txt){
 		memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 	}
 
-	mbox_action(btns, txt);
-
 	nyx_mbox_action(btns, txt);
+
 	return LV_RES_INV;
 }
 
@@ -357,7 +356,7 @@ static lv_res_t _create_emummc_emmc_raw_format(lv_obj_t * btns, const char * txt
 	int btn_idx = lv_btnm_get_pressed(btns);
 
 	// Delete parent mbox.
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	// Create partition window.
 	if (!btn_idx)
@@ -620,7 +619,7 @@ static lv_res_t _create_emummc_file_based_action(lv_obj_t *btns, const char *txt
 		_create_window_emummc();
 	}
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -747,7 +746,7 @@ static void _create_mbox_emummc_file_based(){
 static lv_res_t _create_emummc_select_file_type_action(lv_obj_t *btns, const char *txt){
 	int btn_idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 
@@ -770,7 +769,7 @@ static lv_res_t _create_emummc_select_file_type_action(lv_obj_t *btns, const cha
 static lv_res_t _create_emummc_select_raw_type_action(lv_obj_t *btns, const char *txt){
 	int btn_idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	memset(&emummc_part_cfg, 0, sizeof(emummc_part_cfg));
 
@@ -832,7 +831,7 @@ static void _create_mbox_emummc_select_file_type(){
 static lv_res_t _create_emummc_select_type_action(lv_obj_t *btns, const char *txt){
 	int btn_idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	switch(btn_idx){
 	case 0:
@@ -891,7 +890,7 @@ static void _change_raw_emummc_part_type()
 static lv_res_t _save_emummc_cfg_mig_mbox_action(lv_obj_t *btns, const char *txt)
 {
 	// Delete main emuMMC and popup windows and relaunch main emuMMC window.
-	lv_obj_del(emummc_manage_window);
+	lv_obj_clean(emummc_parent_cont);
 	nyx_mbox_action(btns, txt);
 
 	(*emummc_tools)(emummc_parent_cont);
@@ -949,6 +948,7 @@ static void _migrate_sd_raw_emummc_based()
 	boot_storage_unmount();
 	sd_unmount();
 }
+
 static u32 _copy_file(const char *src, const char* dest){
 	u32 res = FR_OK;
 	u8 *buf = (u8*)MIXD_BUF_ALIGNED;
@@ -1814,7 +1814,8 @@ out1:
 
 lv_res_t create_tab_emummc_tools(lv_obj_t *parent)
 {
-	lv_obj_t *win = nyx_create_standard_window(SYMBOL_EDIT"  emuMMC Manage", NULL);
+	emummc_parent_cont = parent;
+	emummc_tools = &create_tab_emummc_tools;
 
 	boot_storage_mount();
 

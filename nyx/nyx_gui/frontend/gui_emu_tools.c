@@ -31,7 +31,7 @@ static lv_obj_t *_create_container(lv_obj_t *parent){
 }
 
 lv_res_t create_win_emu_tools(lv_obj_t *btn){
-	lv_obj_t *win = nyx_create_standard_window(SYMBOL_EDIT "  emuMMC Manage");
+	lv_obj_t *win = nyx_create_standard_window(SYMBOL_EDIT "  emuMMC Manage", NULL);
 
 	static lv_style_t win_style_no_pad;
 	lv_style_copy(&win_style_no_pad, lv_win_get_style(win, LV_WIN_STYLE_CONTENT_BG));

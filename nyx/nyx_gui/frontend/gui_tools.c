@@ -1769,7 +1769,7 @@ lv_res_t _partition_action(lv_obj_t *btnm, const char *txt){
 	return LV_RES_OK;
 }
 
-static void _create_tab_tools_emmc_pkg12(lv_theme_t *th, lv_obj_t *parent)
+static void _create_tab_tools_emmc_sd_usb(lv_theme_t *th, lv_obj_t *parent)
 {
 	lv_page_set_scrl_layout(parent, LV_LAYOUT_PRETTY);
 

@@ -756,7 +756,6 @@ void hos_launch(ini_sec_t *cfg)
 		// Check if stock is enabled and device can boot in OFW.
 		if (ctxt.stock && (h_cfg.t210b01 || !tools_autorcm_enabled()))
 		{
-			sdram_src_pllc(false);
 			emummc_storage_end();
 			emusd_storage_end();
 			emmc_end();
@@ -1144,7 +1143,6 @@ void hos_launch(ini_sec_t *cfg)
 
 error:
 	_free_launch_components(&ctxt);
-	sdram_src_pllc(false);
 	emummc_storage_end();
 	emusd_storage_end();
 	emmc_end();

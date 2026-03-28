@@ -66,7 +66,7 @@ static void _get_emusd_parts(gpt_t *gpt){
 
 static lv_res_t _close_mbox_and_reload(lv_obj_t *btns, const char *txt){
 	lv_obj_clean(emusd_parent_cont);
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	(*emusd_tools)(emusd_parent_cont);
 
@@ -75,7 +75,7 @@ static lv_res_t _close_mbox_and_reload(lv_obj_t *btns, const char *txt){
 
 static lv_res_t _emusd_create_action(lv_obj_t *btns, const char *txt){
 	int idx = lv_btnm_get_pressed(btns);
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	if(idx < gpt_ctxt.cnt) {
 		lv_obj_t *dark_bg = lv_obj_create(lv_scr_act(), NULL);
@@ -128,7 +128,7 @@ static lv_res_t _emusd_create_action(lv_obj_t *btns, const char *txt){
 static lv_res_t _emusd_format_action(lv_obj_t *btns, const char *txt){
 	u32 idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	if(!idx){
 		create_window_partition_manager(btns, emusd_drive);
@@ -160,7 +160,7 @@ static lv_res_t _action_slider_emusd_file(lv_obj_t *slider){
 
 static lv_res_t _create_emusd_file_based_action(lv_obj_t *btns, const char *txt){
 	int idx = lv_btnm_get_pressed(btns);
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	if(!idx && slider_ctx.emu_size) {
 		lv_obj_t *dark_bg = lv_obj_create(lv_scr_act(), NULL);
@@ -327,7 +327,7 @@ static void _create_mbox_emusd_file_based(){
 static lv_res_t _create_emusd_select_file_type_action(lv_obj_t *btns, const char *txt){
 	int btn_idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	switch(btn_idx){
 	case 0:
@@ -444,7 +444,7 @@ static void _create_mbox_emusd_raw() {
 static lv_res_t _create_emusd_select_raw_type_action(lv_obj_t *btns, const char *txt){
 	int btn_idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	switch(btn_idx){
 	case 0:
@@ -485,7 +485,7 @@ static void _create_mbox_emusd_select_raw_type(){
 static lv_res_t _create_emusd_select_type_action(lv_obj_t *btns, const char *txt){
 	int btn_idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	switch(btn_idx){
 	case 0:
@@ -659,7 +659,7 @@ static lv_res_t _save_emmc_raw_emusd_cfg_action(lv_obj_t * btn)
 
 static lv_res_t _create_change_emusd_window(lv_obj_t *btn_caller)
 {
-	lv_obj_t *win = nyx_create_standard_window(SYMBOL_SETTINGS"  Change emuSD");
+	lv_obj_t *win = nyx_create_standard_window(SYMBOL_SETTINGS"  Change emuSD", NULL);
 	lv_win_add_btn(win, NULL, SYMBOL_POWER"  Disable", _save_disable_emusd_cfg_action);
 
 	boot_storage_mount();
@@ -677,7 +677,7 @@ static lv_res_t _create_change_emusd_window(lv_obj_t *btn_caller)
 
 	memset(emusd_img->part_path, 0, 3 * 128);
 
-	emusd_img->dirlist = dirlist("emuSD", NULL, false, true);
+	emusd_img->dirlist = dirlist("emuSD", NULL, DIR_SHOW_DIRS);
 
 	if(!emusd_img->dirlist){
 		goto out0;
@@ -1022,7 +1022,7 @@ lv_res_t create_tab_emusd_tools(lv_obj_t *parent)
 	lv_obj_t *label_txt = lv_label_create(h1, NULL);
 	lv_label_set_static_text(label_txt, "emuSD Info & Selection");
 	lv_obj_set_style(label_txt, lv_theme_get_current()->label.prim);
-	lv_obj_align(label_txt, h1, LV_ALIGN_IN_TOP_LEFT, LV_DPI / 4, -LV_DPI / 9);
+	lv_obj_align(label_txt, h1, LV_ALIGN_IN_TOP_LEFT, LV_DPI / 4, LV_DPI / 11);
 
 	lv_obj_t *line_sep = lv_line_create(h1, NULL);
 	static const lv_point_t line_pp[] = { {0, 0}, { LV_HOR_RES - (LV_DPI - (LV_DPI / 4)) * 2, 0} };
@@ -1108,7 +1108,7 @@ lv_res_t create_tab_emusd_tools(lv_obj_t *parent)
 	lv_obj_t *label_txt3 = lv_label_create(h2, NULL);
 	lv_label_set_static_text(label_txt3, "emuSD Tools");
 	lv_obj_set_style(label_txt3, lv_theme_get_current()->label.prim);
-	lv_obj_align(label_txt3, h2, LV_ALIGN_IN_TOP_LEFT, LV_DPI / 4, 0);
+	lv_obj_align(label_txt3, h2, LV_ALIGN_IN_TOP_LEFT, LV_DPI / 4, LV_DPI / 5);
 
 	line_sep = lv_line_create(h2, line_sep);
 	lv_obj_align(line_sep, label_txt3, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);

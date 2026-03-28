@@ -920,7 +920,7 @@ static void _launch_hos(u8 autoboot, u8 autoboot_list)
 	(*main_ptr)();
 }
 
-void reload_nyx()
+void reload_nyx(lv_obj_t *obj, bool force)
 {
 	b_cfg->boot_cfg = BOOT_CFG_AUTOBOOT_EN;
 	b_cfg->autoboot = 0;
@@ -942,7 +942,7 @@ void reload_nyx()
 static lv_res_t reload_action(lv_obj_t *btns, const char *txt)
 {
 	if (!lv_btnm_get_pressed(btns))
-		reload_nyx();
+		reload_nyx(NULL, true);
 
 	return nyx_mbox_action(btns, txt);
 }
@@ -999,7 +999,7 @@ static void _check_sd_card_removed(void *params)
 
 	// If in reload state and card was inserted, reload nyx.
 	if (do_reload && !sd_get_card_removed() && boot_storage_get_drive() == DRIVE_SD)
-		reload_nyx();
+		reload_nyx(NULL, true);
 }
 
 lv_task_t *task_emmc_errors;
@@ -1996,7 +1996,7 @@ static void _create_tab_home(lv_theme_t *th, lv_obj_t *parent)
 	// Set brand label.
 	lv_obj_t *label_brand = lv_label_create(parent, NULL);
 	lv_label_set_recolor(label_brand, true);
-	s_printf(btn_colored_text, "%s%s", text_color, " hekate#");
+	s_printf(btn_colored_text, "%s%s", text_color, " hekate-pro#");
 	lv_label_set_text(label_brand, btn_colored_text);
 	lv_obj_set_pos(label_brand, 50, 48);
 
@@ -2396,7 +2396,7 @@ static void _nyx_main_menu(lv_theme_t * th)
 	// Add all tabs content.
 	char version[32];
 	char rel = (nyx_str->version >> 24) & 0xFF;
-	s_printf(version, "hekate %s%d.%d.%d%c%c",
+	s_printf(version, "hekate-pro %s%d.%d.%d%c%c",
 			 rel ? "v" : "", nyx_str->version & 0xFF, (nyx_str->version >> 8) & 0xFF, (nyx_str->version >> 16) & 0xFF, rel > 'a' ? rel : 0,
 			 (nyx_str->info_ex.rsvd_flags & RSVD_FLAG_DRAM_8GB) ? '*' : 0);
 	lv_obj_t *tab_about = lv_tabview_add_tab(tv, version);

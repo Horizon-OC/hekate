@@ -941,7 +941,7 @@ static lv_res_t _action_delete_linux_installer_files(lv_obj_t * btns, const char
 	int btn_idx = lv_btnm_get_pressed(btns);
 
 	// Delete parent mbox.
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	// Flash Linux.
 	if (!btn_idx)
@@ -992,7 +992,7 @@ static lv_res_t _action_flash_linux_data(lv_obj_t * btns, const char * txt)
 	int btn_idx = lv_btnm_get_pressed(btns);
 
 	// Delete parent mbox.
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	bool succeeded = false;
 
@@ -1184,7 +1184,7 @@ exit:
 	}
 
 	if (!succeeded)
-		lv_mbox_add_btns(mbox, mbox_btn_map, mbox_action);
+		lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
 	else
 		lv_mbox_add_btns(mbox, mbox_btn_map2, _action_delete_linux_installer_files);
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
@@ -1387,7 +1387,7 @@ static lv_res_t _action_check_flash_linux(lv_obj_t *btn)
 	goto exit;
 
 error:
-	lv_mbox_add_btns(mbox, mbox_btn_map, mbox_action);
+	lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
 
 exit:
 	boot_storage_unmount();
@@ -1409,7 +1409,7 @@ static lv_res_t _action_reboot_recovery(lv_obj_t * btns, const char * txt)
 	int btn_idx = lv_btnm_get_pressed(btns);
 
 	// Delete parent mbox.
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	if (!btn_idx)
 	{
@@ -1446,7 +1446,7 @@ static lv_res_t _action_flash_android_data(lv_obj_t * btns, const char * txt)
 	bool boot_recovery = false;
 
 	// Delete parent mbox.
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	if (btn_idx)
 		return LV_RES_INV;
@@ -1708,7 +1708,7 @@ error:
 		lv_mbox_add_btns(mbox, mbox_btn_map2, _action_reboot_recovery);
 	}
 	else
-		lv_mbox_add_btns(mbox, mbox_btn_map, mbox_action);
+		lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
 
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
 
@@ -1814,7 +1814,7 @@ static lv_res_t _action_flash_android_slot_select1(lv_obj_t *btns, const char *t
 		break;
 	}
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return _action_flash_android(NULL);
 }
@@ -1847,7 +1847,7 @@ static lv_res_t _action_flash_android_slot_select(lv_obj_t *btn){
 	if(n_slots == 0){
 		lv_label_set_text(lbl_status,
 			"No Android partitions found!\n");
-		lv_mbox_add_btns(mbox, mbox_btn_map2, mbox_action);
+		lv_mbox_add_btns(mbox, mbox_btn_map2, nyx_mbox_action);
 	}else{
 		lv_label_set_text(lbl_status,
 		                  "Found multible sets of Android partitions.\n"
@@ -1884,7 +1884,7 @@ static lv_res_t _action_part_manager_flash_options0(lv_obj_t *btns, const char *
 		_action_flash_android_slot_select(btns);
 		break;
 	case 3:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		return LV_RES_INV;
 	}
 
@@ -1908,11 +1908,11 @@ static lv_res_t _action_part_manager_flash_options1(lv_obj_t *btns, const char *
 		lv_obj_del(ums_mbox);
 		break;
 	case 1:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		_action_check_flash_linux(NULL);
 		return LV_RES_INV;
 	case 2:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		return LV_RES_INV;
 	}
 
@@ -1936,11 +1936,11 @@ static lv_res_t _action_part_manager_flash_options2(lv_obj_t *btns, const char *
 		lv_obj_del(ums_mbox);
 		break;
 	case 1:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		_action_flash_android_slot_select(NULL);
 		return LV_RES_INV;
 	case 2:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		return LV_RES_INV;
 	}
 
@@ -2467,7 +2467,7 @@ error:
 
 exit:
 	if(!buttons_set){
-		lv_mbox_add_btns(mbox, mbox_btn_map, mbox_action);
+		lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
 	}
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_set_top(mbox, true);
@@ -2670,7 +2670,7 @@ exit:
 	free(txt_buf);
 
 	if (!buttons_set)
-		lv_mbox_add_btns(mbox, mbox_btn_map, mbox_action);
+		lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_set_top(mbox, true);
 
@@ -2695,11 +2695,11 @@ static lv_res_t _create_mbox_partitioning_option0(lv_obj_t *btns, const char *tx
 		}
 		return LV_RES_OK;
 	case 1:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		_create_mbox_start_partitioning();
 		break;
 	case 2:
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		break;
 	}
 
@@ -2710,11 +2710,11 @@ static lv_res_t _create_mbox_partitioning_option1(lv_obj_t *btns, const char *tx
 {
 	int btn_idx = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	if (!btn_idx)
 	{
-		mbox_action(btns, txt);
+		nyx_mbox_action(btns, txt);
 		if (!part_info.emmc)
 			_create_mbox_start_partitioning();
 		else
@@ -2819,7 +2819,7 @@ static lv_res_t _create_mbox_partitioning_android(lv_obj_t *btns, const char *tx
 {
 	part_info.and_dynamic = lv_btnm_get_pressed(btns);
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	_create_mbox_partitioning_warn();
 
@@ -3320,7 +3320,7 @@ static lv_res_t _mbox_check_files_total_size_option(lv_obj_t *btns, const char *
 	if (!lv_btnm_get_pressed(btns))
 		part_info.backup_possible = false;
 
-	mbox_action(btns, txt);
+	nyx_mbox_action(btns, txt);
 
 	return LV_RES_INV;
 }
@@ -3714,7 +3714,7 @@ static void _create_mbox_check_files_total_size(u8 drive)
 
 
 	if (!part_info.backup_possible)
-		lv_mbox_add_btns(mbox, mbox_btn_map, mbox_action);
+		lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
 	else
 		lv_mbox_add_btns(mbox, mbox_btn_map2, _mbox_check_files_total_size_option);
 
@@ -4049,7 +4049,7 @@ check_changes:
 out:
 	free(gpt);
 
-	lv_mbox_add_btns(mbox, mbox_btn_map, mbox_action);
+	lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
 
 	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
 	lv_obj_set_top(mbox, true);
@@ -4061,7 +4061,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 {
 	char title_str[0x20];
 	s_printf(title_str, "%s %s Partition Manager", drive == DRIVE_SD ? SYMBOL_SD : SYMBOL_CHIP, drive == DRIVE_SD ? "SD" : "eMMC");
-	lv_obj_t *win = nyx_create_standard_window(title_str);
+	lv_obj_t *win = nyx_create_standard_window(title_str, NULL);
 
 	if(drive == DRIVE_SD){
 		lv_win_add_btn(win, NULL, SYMBOL_MODULES_ALT" Fix Hybrid MBR/GPT", _action_fix_mbr_gpt);
@@ -4485,12 +4485,6 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_align(slider_and, lbl_and, LV_ALIGN_IN_LEFT_MID, LV_DPI * 3, 0);
 	lv_slider_set_action(slider_and, _action_slider_and);
 
-	// Create container for the labels.
-	lv_obj_t *cont_lbl = lv_cont_create(h1, NULL);
-	lv_cont_set_fit(cont_lbl, false, true);
-	lv_obj_set_width(cont_lbl, LV_DPI * 3 / 2);
-	part_info.cont_lbl = cont_lbl;
-
 	// Create emuSD size slider
 	lv_obj_t *slider_emu_sd = lv_slider_create(h1, NULL);
 	lv_obj_set_size(slider_emu_sd, LV_DPI * 7, LV_DPI / 3);
@@ -4518,7 +4512,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	part_info.lbl_hos_os = lbl_sl_hos_os;
 
 	// Create HOS size label.
-	lv_obj_t *lbl_sl_hos = lv_label_create(cont_lbl, NULL);
+	lv_obj_t *lbl_sl_hos = lv_label_create(h1, NULL);
 	lv_label_set_recolor(lbl_sl_hos, true);
 	s_printf(txt_buf, "#96FF00 %d GiB#", part_info.hos_size >> 10);
 	lv_label_set_text(lbl_sl_hos, txt_buf);
@@ -4581,10 +4575,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	label_btn = lv_label_create(btn_flash_l4t, NULL);
 	lv_btn_set_fit(btn_flash_l4t, true, true);
 	lv_label_set_static_text(label_btn, SYMBOL_DOWNLOAD"  Flash Linux");
-	if (!emmc)
-		lv_obj_align(btn_flash_l4t, btn1, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 3, 0);
-	else
-		lv_obj_align(btn_flash_l4t, h1, LV_ALIGN_IN_TOP_LEFT, 0, LV_DPI * 5);
+	lv_obj_align(btn_flash_l4t, btn1, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 3, 0);
 	lv_btn_set_action(btn_flash_l4t, LV_BTN_ACTION_CLICK, _action_check_flash_linux);
 
 	// Disable Flash Linux button if partition not found.

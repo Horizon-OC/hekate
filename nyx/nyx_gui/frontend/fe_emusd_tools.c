@@ -238,7 +238,7 @@ int create_emusd(int part_idx, u32 sector_mbr, u32 sector_start, u32 sector_size
 				if(mkfs_error == FR_OK){
 					u8 random_number[16];
 					mbr_t mbr = {0};
-					se_gen_prng128(random_number);
+					se_rng_pseudo(random_number, SE_RNG_BLOCK_SIZE);
 					memcpy(&mbr.signature, random_number, 4);
 					mbr.boot_signature = 0xaa55;
 					mbr.partitions[0].start_sct = sector_start - sector_mbr;
