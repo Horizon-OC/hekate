@@ -299,7 +299,7 @@ void pkg1_secmon_patch(void *hos_ctxt, u32 secmon_base, bool t210b01)
 			// Get size of compressed program payload and set patch offset.
 			u32 idx = ctxt->pkg1_id->mkey - HOS_MKEY_VER_700;
 			u32 patch_offset = TZRAM_PROG_PK2_SIG_PATCH;
-			if (ctxt->pkg1_id->mkey > HOS_MKEY_VER_910 || !memcmp(ctxt->pkg1_id->id, "20200303", 8)) //TODO: Add 11.0.0 support.
+			if (ctxt->pkg1_id->mkey >= HOS_MKEY_VER_1210 || !memcmp(ctxt->pkg1_id->id, "20200303", 8)) //TODO: Add 11.0.0 support.
 			{
 				idx++;
 				patch_offset = TZRAM_PROG_PK2_SIG_PATCH_1000;
@@ -350,11 +350,11 @@ static void _warmboot_filename(char *out, u32 fuses)
 {
 	if (fuses < 16)
 	{
-		out[19] = '0';
-		itoa(fuses, &out[19 + 1], 16);
+		out[25] = '0';
+		itoa(fuses, &out[25 + 1], 16);
 	}
 	else
-		itoa(fuses, &out[19], 16);
+		itoa(fuses, &out[25], 16);
 	strcat(out, ".bin");
 }
 
@@ -365,7 +365,6 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 
 	if (h_cfg.t210b01)
 	{
-		u32 pa_id;
 		u32 fuses_max = 32; // Current ODM7 max.
 		u8  burnt_fuses = bit_count(fuse_read_odm(7));
 
@@ -383,42 +382,62 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 				sd_save_to_file((void *)warmboot_base, ctxt->warmboot_size, path);
 			}
 
-			// Load warmboot fw from storage (MWS) if not matched.
+			// Load warmboot fw from storage if burnt fuses are higher than firmware's.
 			if (burnt_fuses > fuses_fw)
 			{
-				u32 tmp_fuses = burnt_fuses;
-				while (true)
+				if (fuses_fw == 0)
 				{
-					_warmboot_filename(path, burnt_fuses);
-					if (!f_stat(path, NULL))
+					// L4T path (fuses_fw=0 sentinel): load sc7exit_b01.bin as upstream does.
+					void *warmboot_fw = sd_file_read("bootloader/sys/l4t/sc7exit_b01.bin", &ctxt->warmboot_size);
+					if (!warmboot_fw)
 					{
-						ctxt->warmboot = emusd_file_read(path + 6, &ctxt->warmboot_size);
-						burnt_fuses = tmp_fuses;
-						break;
+						res = 1;
 					}
-					if (tmp_fuses >= fuses_max)
-						break;
-					tmp_fuses++;
+					else
+					{
+						fuses_fw = *(u32 *)warmboot_fw;
+						if (burnt_fuses > fuses_fw)
+							res = 1;
+						else
+						{
+							ctxt->warmboot      = warmboot_fw + sizeof(u32);
+							ctxt->warmboot_size -= sizeof(u32) * 2;
+							burnt_fuses          = fuses_fw;
+						}
+					}
 				}
+				else
+				{
+					// HOS path: scan emuSD MWS cache for a matching warmboot fw.
+					u32 tmp_fuses = burnt_fuses;
+					while (true)
+					{
+						_warmboot_filename(path, tmp_fuses);
+						if (!f_stat(path, NULL))
+						{
+							ctxt->warmboot = emusd_file_read(path + 6, &ctxt->warmboot_size);
+							burnt_fuses = tmp_fuses;
+							break;
+						}
+						if (tmp_fuses >= fuses_max)
+							break;
+						tmp_fuses++;
+					}
 
-				// Check if proper warmboot firmware was not found.
-				if (!ctxt->warmboot)
-					res = 1;
+					// Check if proper warmboot firmware was not found.
+					if (!ctxt->warmboot)
+						res = 1;
+				}
 			}
 			else // Replace burnt fuses with higher count.
 				burnt_fuses = fuses_fw;
 		}
 
-		// Configure Warmboot parameters. Anything lower is not supported.
-		switch (burnt_fuses)
-		{
-		case 7 ... 8:
-			pa_id = 0x21 * (burnt_fuses - 3) + 3;
-			break;
-		default: // From 7.0.0 and up PA id is 0x21 multiplied with fuses.
-			pa_id = 0x21 * burnt_fuses;
-			break;
-		}
+		// Configure Warmboot parameters. Anything lower than 6.0.0 is not supported.
+		// From 7.0.0 and up, PA id is 0x21 * fuses. Below 9, subtract 0x60 for old method.
+		u32 pa_id = 0x21 * burnt_fuses;
+		if (burnt_fuses <= 8)
+			pa_id -= 0x60;
 
 		// Set Warmboot Physical Address ID and lock SECURE_SCRATCH32 register.
 		PMC(APBDEV_PMC_SECURE_SCRATCH32) = pa_id;
