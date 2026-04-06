@@ -549,7 +549,7 @@ static void _create_mbox_emummc_emmc_raw()
 			s_printf(txt_buf + strlen(txt_buf), "#%s Part. %d (%s): Start: 0x%x, Size. 0x%x#\n", gpt_ctx.emmc_part_resize_cnt[i] ? "FFDD00" : "C0C0C0", gpt_ctx.emmc_part_idx[i], name, gpt_ctx.emmc_part_offset[i], gpt_ctx.emmc_part_size[i]);
 			s_printf(mbox_btn_parts[i], "\222Part. %d", gpt_ctx.emmc_part_idx[i]);
 		}
-		s_printf(mbox_btn_parts[gpt_ctx.emmc_part_cnt], "Cancel");
+		s_printf(mbox_btn_parts[gpt_ctx.emmc_part_cnt], "\222Cancel");
 		mbox_btn_parts[gpt_ctx.emmc_part_cnt + 1][0] = '\0';
 		strcat(txt_buf, "\n#FFDD00 Note:# Yellow entries have USER partition resized.");
 
@@ -784,7 +784,6 @@ static lv_res_t _create_emummc_select_raw_type_action(lv_obj_t *btns, const char
 		break;
 	}
 
-	nyx_mbox_action(btns, txt);
 	return LV_RES_INV;
 }
 
