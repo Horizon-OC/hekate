@@ -1281,6 +1281,7 @@ static void _create_tab_about(lv_theme_t * th, lv_obj_t * parent)
 		"       (c) 2018-2026, #C7EA46 CTCaer#\n"
 		"\n"
 		"#C7EA46 Nyx#    (c) 2019-2026, #C7EA46 CTCaer#\n"
+		"#C7EA46 Pro#		 (c) 2025-2026, #C7EA46 Nautilus#, #C7EA46 naga#\n"
 		"\n"
 		"Thanks to: #00CCFF derrek, nedwill, plutoo, #\n"
 		"           #00CCFF shuffle2, smea, thexyz, yellows8 #\n"

@@ -36,7 +36,7 @@ void emusd_load_cfg()
 	}
 
 	LIST_INIT(ini_sections);
-	if(ini_parse(&ini_sections, "emuSD/emusd.ini", false))
+	if(!ini_parse(&ini_sections, "emuSD/emusd.ini", false))
 	{
 		LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, &ini_sections, link)
 		{
@@ -77,6 +77,7 @@ bool emusd_mount() {
 		EPRINTFARGS("emusd mount fail %d", res);
 		return false;
 	}
+	emusd_mounted = true;
 	return true;
 }
 
@@ -89,16 +90,15 @@ bool emusd_unmount() {
 bool emusd_set_path(char *path) {
 	FIL fp;
 	bool found = false;
-	// TODO: use emu_sd.file_path  instead
-	strcat(emu_sd_cfg.emummc_file_based_path, "");
+	strcpy(emu_sd_cfg.emummc_file_based_path, "");
 	strcpy(emu_sd_cfg.emummc_file_based_path, path);
-	strcat(emu_sd_cfg.emummc_file_based_path, "/raw_emmc_based");
+	strcat(emu_sd_cfg.emummc_file_based_path, "/raw_based");
 	if(!f_open(&fp, emu_sd_cfg.emummc_file_based_path, FA_READ))
 	{
 		if(!f_read(&fp, &emu_sd_cfg.sector, 4, NULL)){
 			if(emu_sd_cfg.sector){
 				found = true;
-				emu_sd_cfg.enabled = 4;
+				emu_sd_cfg.enabled = 1;
 				goto out;
 			}
 		}
@@ -266,11 +266,15 @@ void *emusd_file_read(const char *path, u32 *fsize) {
 		strcpy(path1, "emusd:");
 		strcat(path1, path);
 		FIL fp;
-		if (!emusd_get_mounted())
+		if (!emusd_get_mounted()) {
+			free(path1);
 			return NULL;
+		}
 
-		if (f_open(&fp, path, FA_READ) != FR_OK)
+		if (f_open(&fp, path1, FA_READ) != FR_OK) {
+			free(path1);
 			return NULL;
+		}
 
 		u32 size = f_size(&fp);
 		if (fsize)
@@ -282,11 +286,12 @@ void *emusd_file_read(const char *path, u32 *fsize) {
 		{
 			free(buf);
 			f_close(&fp);
-
+			free(path1);
 			return NULL;
 		}
 
 		f_close(&fp);
+		free(path1);
 
 		return buf;
 	} else {

@@ -66,6 +66,8 @@ static bool _boot_storage_initialize(){
 }
 
 static void _boot_storage_end(bool deinit){
+	BYTE prev_drive = drive_cur;
+
 	if(boot_storage_get_mounted()){
 		switch(drive_cur){
 		case DRIVE_SD:
@@ -82,7 +84,7 @@ static void _boot_storage_end(bool deinit){
 	}
 
 	if(deinit){
-		switch(drive_cur){
+		switch(prev_drive){
 		case DRIVE_SD:
 			sd_end();
 			break;

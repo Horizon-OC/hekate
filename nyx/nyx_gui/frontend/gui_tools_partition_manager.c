@@ -4381,15 +4381,12 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_set_hidden(lbl_hos_os, !has_hos_os);
 
 	lv_coord_t spacing;
-	if(drive == DRIVE_EMMC){
-		if(has_hos_os){
-			// adjust spacing when we have 5 sliders
-			spacing = (LV_DPI / 3) - (lv_obj_get_height(lbl_hos_os) + LV_DPI / 3) / 3;
-		}else{
-			spacing = (LV_DPI / 3) - (lv_obj_get_height(lbl_hos_os) + LV_DPI / 3) / 4;
-		}
+	if(has_hos_os){
+		// adjust spacing when we have 6 sliders
+		spacing = (LV_DPI / 3) - (lv_obj_get_height(lbl_hos_os) + LV_DPI / 3) / 3;
 	}else{
-		spacing = LV_DPI / 3;
+		// 5 sliders
+		spacing = (LV_DPI / 3) - (lv_obj_get_height(lbl_hos_os) + LV_DPI / 3) / 4;
 	}
 	
 	lv_obj_t *lbl_hos = lv_label_create(h1, NULL);
@@ -4404,11 +4401,11 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_t *lbl_emu_sd = lv_label_create(	h1, lbl_hos);
 	lv_label_set_static_text(lbl_emu_sd, "#FF00D6 " SYMBOL_DOT " emuSD:#");
 	lv_obj_align(lbl_emu_sd, lbl_emu, LV_ALIGN_OUT_BOTTOM_LEFT, 0, spacing);
-	lv_obj_set_hidden(lbl_emu_sd, drive == DRIVE_SD);
+	lv_obj_set_hidden(lbl_emu_sd, false);
 
 	lv_obj_t *lbl_l4t = lv_label_create(h1, lbl_hos);
 	lv_label_set_static_text(lbl_l4t, "#00DDFF "SYMBOL_DOT" Linux (EXT4):#");
-	lv_obj_align(lbl_l4t, drive == DRIVE_SD ? lbl_emu : lbl_emu_sd, LV_ALIGN_OUT_BOTTOM_LEFT, 0, spacing);
+	lv_obj_align(lbl_l4t, lbl_emu_sd, LV_ALIGN_OUT_BOTTOM_LEFT, 0, spacing);
 
 	lv_obj_t *lbl_and = lv_label_create(h1, lbl_hos);
 	lv_label_set_static_text(lbl_and, "#FF8000 "SYMBOL_DOT" Android (USER):#");
@@ -4495,7 +4492,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_slider_set_style(slider_emu_sd, LV_SLIDER_STYLE_KNOB, &bar_emu_sd_btn);
 	lv_obj_align(slider_emu_sd, lbl_emu_sd, LV_ALIGN_IN_LEFT_MID, LV_DPI * 3, 0);
 	lv_slider_set_action(slider_emu_sd, _action_slider_emu_sd);
-	lv_obj_set_hidden(slider_emu_sd, drive == DRIVE_SD);
+	lv_obj_set_hidden(slider_emu_sd, false);
 	part_info.slider_emu_sd = slider_emu_sd;
 
 	// Create HOS OS size lable
@@ -4541,7 +4538,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_t *lbl_sl_emu_sd = lv_label_create(h1, lbl_sl_hos);
 	lv_label_set_text(lbl_sl_emu_sd, "#FF00D6 0 GiB#");
 	lv_obj_align(lbl_sl_emu_sd, slider_emu_sd, LV_ALIGN_OUT_RIGHT_MID, LV_DPI * 4 / 7, 0);
-	lv_obj_set_hidden(lbl_sl_emu_sd, drive == DRIVE_SD);
+	lv_obj_set_hidden(lbl_sl_emu_sd, false);
 	part_info.lbl_emu_sd = lbl_sl_emu_sd;
 
 	// Set partition manager notes.

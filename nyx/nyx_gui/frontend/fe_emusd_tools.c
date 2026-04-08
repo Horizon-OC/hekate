@@ -19,7 +19,7 @@ void load_emusd_cfg(emusd_cfg_t *emu_info){
 
 	// Parse emuMMC configuration.
 	LIST_INIT(ini_sections);
-	if (!ini_parse(&ini_sections, "emuSD/emusd.ini", false))
+	if (ini_parse(&ini_sections, "emuSD/emusd.ini", false))
 		return;
 
 	LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, &ini_sections, link)
@@ -264,7 +264,7 @@ int create_emusd(int part_idx, u32 sector_mbr, u32 sector_start, u32 sector_size
 	f_mkdir(path);
 	s_printf(path + strlen(path), "/RAW_%s%d", drive == DRIVE_SD ? "SD" : "EMMC", part_idx);
 	f_mkdir(path);
-	strcat(path, "/raw_emmc_based");
+	strcat(path, drive == DRIVE_SD ? "/raw_based" : "/raw_emmc_based");
 
 	f_open(&f, path, FA_CREATE_ALWAYS | FA_WRITE);
 	f_write(&f, &sector_mbr, 4, NULL);

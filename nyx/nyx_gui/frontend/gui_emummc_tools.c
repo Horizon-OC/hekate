@@ -515,7 +515,7 @@ static void _create_mbox_emummc_emmc_raw()
 		// TODO: should check for emummc guid instead
 		// TODO: currently hard limited to 3 entries
 		s32 gpt_idx = gpt_get_part_by_name(gpt, "emummc", -1);
-		while(gpt_idx != -1){
+		while(gpt_idx != -1 && gpt_ctx.emmc_part_cnt < 3){
 			u32 offset = gpt->entries[gpt_idx].lba_start;
 			u32 size = gpt->entries[gpt_idx].lba_end - gpt->entries[gpt_idx].lba_start + 1;
 

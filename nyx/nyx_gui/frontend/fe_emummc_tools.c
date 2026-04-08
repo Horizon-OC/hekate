@@ -1040,12 +1040,17 @@ void dump_emummc_raw(emmc_tool_gui_t *gui, int part_idx, u32 sector_start, u32 r
 
 	sdmmc_storage_t *emu_storage = drive == DRIVE_SD ? &sd_storage : &emmc_storage;
 
-	boot_storage_mount(); 
-
-	if (drive == DRIVE_SD && !sd_initialize(false))
+	if (drive == DRIVE_SD)
 	{
-		lv_label_set_text(gui->label_info, "#FFDD00 Failed to init SD!#");
-		goto out;
+		if (!sd_mount())
+		{
+			lv_label_set_text(gui->label_info, "#FFDD00 Failed to init SD!#");
+			goto out;
+		}
+	}
+	else
+	{
+		boot_storage_mount();
 	}
 
 	if (!emmc_initialize(false))
@@ -1168,6 +1173,9 @@ out_failed:
 out:
 	free(txt_buf);
 	free(gui->base_path);
-	boot_storage_unmount();
+	if (drive == DRIVE_SD)
+		sd_unmount();
+	else
+		boot_storage_unmount();
 	emmc_end();
 }
