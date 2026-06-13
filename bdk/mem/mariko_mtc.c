@@ -83,7 +83,7 @@ static inline uint32_t u32_max(uint32_t a, uint32_t b) { return a > b ? a : b; }
 static inline int       int_max(int a, int b)           { return a > b ? a : b; }
 static inline int       int_min(int a, int b)           { return a < b ? a : b; }
 
-static EmcDvfsTimingTable *GetEmcDvfsTimingTables(int index, void *mtc_tables_buffer) {
+static EmcDvfsTimingTable *GetEmcDvfsTimingTables(int index, const void *mtc_tables_buffer) {
     const uint8_t *cmp_table;
     size_t         cmp_table_size;
 
@@ -2435,8 +2435,8 @@ static void Dvfs(EmcDvfsTimingTable *dst_timing, EmcDvfsTimingTable *src_timing,
     }
 }
 
-static const u8 MemoryTrainingTableIndex_Invalid = ~0;
-static const u8 MemoryTrainingTableIndices[] = {
+static const s8 MemoryTrainingTableIndex_Invalid = ~0;
+static const s8 MemoryTrainingTableIndices[] = {
     /* DramId_EristaIcosaSamsung4gb    */ 0x00,
     /* DramId_EristaIcosaHynix4gb      */ 0x02,
     /* DramId_EristaIcosaMicron4gb     */ 0x03,
@@ -2475,7 +2475,7 @@ static const u8 MemoryTrainingTableIndices[] = {
 };
 
 int GetMemoryTrainingTableIndex() {
-    if (const int dram_id = fuse_read_dramid(true); dram_id < sizeof(MemoryTrainingTableIndices) && MemoryTrainingTableIndices[dram_id] != MemoryTrainingTableIndex_Invalid) {
+    if (const int dram_id = fuse_read_dramid(true); dram_id < (int) sizeof(MemoryTrainingTableIndices) && MemoryTrainingTableIndices[dram_id] != MemoryTrainingTableIndex_Invalid) {
         return (int) MemoryTrainingTableIndices[dram_id];
     } else {
         return -1;
