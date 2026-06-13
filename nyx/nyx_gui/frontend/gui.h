@@ -48,6 +48,7 @@ typedef struct _gui_status_bar_ctx
 	lv_obj_t *fps;
 	lv_obj_t *battery;
 	lv_obj_t *battery_more;
+	lv_obj_t *line_bottom;
 } gui_status_bar_ctx;
 
 extern lv_style_t hint_small_style;

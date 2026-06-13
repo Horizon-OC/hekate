@@ -21,6 +21,7 @@
 #include "gui.h"
 #include "gui_emummc_tools.h"
 #include "gui_tools.h"
+#include "gui_tools_files.h"
 #include "gui_info.h"
 #include "gui_options.h"
 #include <libs/lvgl/lv_themes/lv_theme_hekate.h>
@@ -2457,6 +2458,10 @@ static void _nyx_main_menu(lv_theme_t * th)
 	lv_page_set_style(tab_tools, LV_PAGE_STYLE_BG, &no_padding);
 	lv_page_set_style(tab_tools, LV_PAGE_STYLE_SCRL, &no_padding);
 
+	lv_obj_t *tab_files = lv_tabview_add_tab(tv, SYMBOL_SD" Files");
+	lv_page_set_style(tab_files, LV_PAGE_STYLE_BG, &no_padding);
+	lv_page_set_style(tab_files, LV_PAGE_STYLE_SCRL, &no_padding);
+
 	lv_obj_t *tab_info = lv_tabview_add_tab(tv, SYMBOL_INFO" Console Info");
 	lv_page_set_style(tab_info, LV_PAGE_STYLE_BG, &no_padding);
 	lv_page_set_style(tab_info, LV_PAGE_STYLE_SCRL, &no_padding);
@@ -2466,6 +2471,7 @@ static void _nyx_main_menu(lv_theme_t * th)
 	_create_tab_about(th, tab_about);
 	_create_tab_home(th, tab_home);
 	create_tab_tools(th, tab_tools);
+	create_tab_files(th, tab_files);
 	create_tab_info(th, tab_info);
 	create_tab_options(th, tab_options);
 
@@ -2507,6 +2513,7 @@ static void _nyx_main_menu(lv_theme_t * th)
 	line = lv_cont_create(lv_layer_top(), line);
 	lv_obj_set_pos(line, LV_DPI * 3 / 10, 656);
 	lv_obj_set_top(line, true);
+	status_bar.line_bottom = line;
 
 	// Option save button.
 	lv_tabview_set_tab_load_action(tv, _show_hide_save_button);
