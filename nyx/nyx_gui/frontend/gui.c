@@ -60,6 +60,8 @@ lv_style_t mbox_darken;
 
 char *text_color;
 
+volatile u32 _fps_frames = 0;
+
 typedef struct _jc_lv_driver_t
 {
 	lv_indev_t *indev_jc;
@@ -315,8 +317,10 @@ static void _disp_fb_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const
 	gfx_set_rect_pitch((u32 *)NYX_FB2_ADDRESS, (u32 *)color_p, 1280, x1, y1, x2, y2);
 
 	// Rotate and copy to visible framebuffer.
-	if (disp_init_done)
+	if (disp_init_done) {
 		vic_compose();
+		_fps_frames++;
+	}
 
 	// Check if display init was done. If it's the first big draw, init.
 	if (!disp_init_done && ((x2 - x1 + 1) > 600))
@@ -1294,7 +1298,7 @@ static void _create_tab_about(lv_theme_t * th, lv_obj_t * parent)
 	lv_label_set_static_text(lbl_credits,
 		"#C7EA46 hekate# (c) 2018,      #C7EA46 naehrwert#, #C7EA46 st4rk#\n"
 		"       (c) 2018-2026, #C7EA46 CTCaer#\n"
-		"\n"
+		"       (c) 2026, #C7EA46 Souldbminer and Lightos_\n"
 		"#C7EA46 Nyx#    (c) 2019-2026, #C7EA46 CTCaer#\n"
 		"\n"
 		"Thanks to: #00CCFF derrek, nedwill, plutoo, #\n"
@@ -1426,6 +1430,26 @@ static void _update_status_bar(void *params)
 
 	lv_label_set_text(status_bar.battery_more, label);
 	lv_obj_realign(status_bar.battery_more);
+}
+
+static void _update_fps(void *params)
+{
+	static u32 fps_last_ms = 0;
+
+	u32 now_ms  = get_tmr_ms();
+	u32 elapsed = now_ms - fps_last_ms;
+
+	if (fps_last_ms && elapsed)
+	{
+		char label[16];
+		u32 fps = (_fps_frames * 1000 + elapsed / 2) / elapsed;
+		s_printf(label, " %2d FPS", fps);
+		lv_label_set_text(status_bar.fps, label);
+		lv_obj_realign(status_bar.fps);
+	}
+
+	fps_last_ms = now_ms;
+	_fps_frames = 0;
 }
 
 static lv_res_t _create_mbox_payloads(lv_obj_t *btn)
@@ -2188,7 +2212,7 @@ static void _create_status_bar(lv_theme_t * th)
 	lv_label_set_text(lbl_left, SYMBOL_CLOCK" ");
 	lv_obj_align(lbl_left, NULL, LV_ALIGN_IN_LEFT_MID, LV_DPI * 6 / 11, 0);
 
-	// Time, temperature.
+	// Time, temperature, FPS.
 	lv_obj_t *lbl_time_temp = lv_label_create(status_bar_bg, NULL);
 	lv_label_set_text(lbl_time_temp, "00:00 "SYMBOL_DOT" "SYMBOL_TEMPERATURE" 00.0");
 	lv_obj_align(lbl_time_temp, lbl_left, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
@@ -2203,6 +2227,18 @@ static void _create_status_bar(lv_theme_t * th)
 	lv_label_set_text(lbl_degrees, "C");
 	lv_obj_align(lbl_degrees, lbl_left, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 50, LV_DPI / 14);
 	status_bar.temp_degrees = lbl_degrees;
+
+
+	lbl_left = lv_label_create(status_bar_bg, NULL);
+	lv_label_set_text(lbl_left, " "SYMBOL_DOT " " SYMBOL_REFRESH);
+	lv_obj_align(lbl_left, lbl_degrees, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
+	status_bar.fps_symbol = lbl_left;
+
+	lv_obj_t *lbl_fps = lv_label_create(status_bar_bg, NULL);
+	lv_label_set_text(lbl_fps, " 0 FPS");
+	lv_obj_align(lbl_fps, lbl_left, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 50, 0);
+	status_bar.fps = lbl_fps;
+
 
 	// Middle button.
 	//! TODO: Utilize it for more.
@@ -2444,6 +2480,8 @@ static void _nyx_main_menu(lv_theme_t * th)
 
 	system_tasks.task.status_bar = lv_task_create(_update_status_bar, 5000, LV_TASK_PRIO_LOW, NULL);
 	lv_task_ready(system_tasks.task.status_bar);
+
+	lv_task_create(_update_fps, 1000, LV_TASK_PRIO_LOW, NULL);
 
 	lv_task_create(_check_sd_card_removed, 2000, LV_TASK_PRIO_LOWEST, NULL);
 

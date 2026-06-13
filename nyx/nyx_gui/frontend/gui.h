@@ -44,6 +44,8 @@ typedef struct _gui_status_bar_ctx
 	lv_obj_t *time_temp;
 	lv_obj_t *temp_symbol;
 	lv_obj_t *temp_degrees;
+	lv_obj_t *fps_symbol;
+	lv_obj_t *fps;
 	lv_obj_t *battery;
 	lv_obj_t *battery_more;
 } gui_status_bar_ctx;
