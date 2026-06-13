@@ -24,6 +24,7 @@
 #include "config.h"
 #include "hos/hos.h"
 #include <ianos/ianos.h>
+#include <mem/mariko_mtc.h>
 #include <libs/compr/blz.h>
 #include <libs/fatfs/ff.h>
 
@@ -438,6 +439,15 @@ void nyx_init_load_res()
 	// Train DRAM and switch to max frequency.
 	minerva_init((minerva_str_t *)&nyx_str->minerva);
 	minerva_change_freq(FREQ_1600);
+
+    if (h_cfg.t210b01) {
+        bool trained = false;
+        MarikoTrainMemory(&trained);
+
+        if (!trained) {
+            EPRINTF("Failed to train memory!");
+        }
+    }
 
 	// Load hekate/Nyx configuration.
 	_load_saved_configuration();

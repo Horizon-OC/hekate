@@ -40,7 +40,7 @@ OBJS += actmon bpmp ccplex clock di vic i2c irq timer \
 		bm92t36 bq24193 max17050 max7762x max77620-rtc regulator_5v \
 		touch joycon tmp451 fan \
 		usbd xusbd usb_descriptors usb_gadget_ums usb_gadget_hid \
-		hw_init
+		hw_init mariko_mtc mtc_uncompress
 
 # Utilities.
 OBJS += btn dirlist ianos ini util config sprintf
