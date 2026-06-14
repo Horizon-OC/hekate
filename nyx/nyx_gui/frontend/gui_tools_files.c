@@ -66,6 +66,9 @@ static u32 fm_entry_count = 0;
 static lv_obj_t *fm_tools_win = NULL;
 static u32 fm_press_ms = 0;
 static u32 fm_press_idx = 0;
+static lv_indev_t *fm_press_indev = NULL;
+static bool fm_press_pending = false;
+static bool fm_press_fired = false;
 
 static void _fm_refresh(void);
 static void _fm_update_status(void);
@@ -445,29 +448,55 @@ static lv_res_t _fm_entry_press(lv_obj_t *btn)
 {
 	fm_press_ms = get_tmr_ms();
 	fm_press_idx = lv_obj_get_free_num(btn);
+	fm_press_indev = lv_indev_get_act();
+	fm_press_pending = true;
+	fm_press_fired = false;
 
 	return LV_RES_OK;
+}
+
+static void _fm_longpress_task(void *unused)
+{
+	if (!fm_press_pending)
+		return;
+
+	if (fm_press_indev && lv_indev_is_dragging(fm_press_indev))
+	{
+		fm_press_pending = false;
+		return;
+	}
+
+	if ((get_tmr_ms() - fm_press_ms) < FM_LONGPRESS_MS)
+		return;
+
+	fm_press_pending = false;
+	fm_press_fired = true;
+
+	u32 i = fm_press_idx;
+	if (i >= fm_entry_count)
+		return;
+
+	strcpy(fm.sel, fm_entries[i].name);
+	fm.sel_is_dir = fm_entries[i].is_dir;
+	fm.has_sel = true;
+	_fm_update_status();
+	_fm_open_tools();
 }
 
 static lv_res_t _fm_entry_action(lv_obj_t *btn)
 {
 	u32 i = lv_obj_get_free_num(btn);
-	if (i >= fm_entry_count)
-		return LV_RES_OK;
 
-	bool long_press = fm_press_ms && fm_press_idx == i && (get_tmr_ms() - fm_press_ms) >= FM_LONGPRESS_MS;
-	fm_press_ms = 0;
+	fm_press_pending = false;
 
-	if (long_press)
+	if (fm_press_fired)
 	{
-		strcpy(fm.sel, fm_entries[i].name);
-		fm.sel_is_dir = fm_entries[i].is_dir;
-		fm.has_sel = true;
-		_fm_update_status();
-		_fm_open_tools();
-
+		fm_press_fired = false;
 		return LV_RES_OK;
 	}
+
+	if (i >= fm_entry_count)
+		return LV_RES_OK;
 
 	if (!fm_entries[i].is_dir)
 	{
@@ -1068,6 +1097,8 @@ void create_tab_files(lv_theme_t *th, lv_obj_t *parent)
 	lv_label_set_text(status_lbl, "No selection");
 	lv_obj_align(status_lbl, list, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 6);
 	fm.status_lbl = status_lbl;
+
+	lv_task_create(_fm_longpress_task, 30, LV_TASK_PRIO_MID, NULL);
 
 	_fm_refresh();
 }
