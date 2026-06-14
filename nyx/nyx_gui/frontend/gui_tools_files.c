@@ -69,6 +69,12 @@ static u32 fm_press_idx = 0;
 static lv_indev_t *fm_press_indev = NULL;
 static bool fm_press_pending = false;
 static bool fm_press_fired = false;
+static lv_obj_t *fm_view_win = NULL;
+static lv_obj_t *fm_view_ta = NULL;
+static lv_obj_t *fm_view_kb = NULL;
+static char fm_view_path[FM_PATH_SIZE];
+static bool fm_view_editing = false;
+static bool fm_view_truncated = false;
 
 static void _fm_refresh(void);
 static void _fm_update_status(void);
@@ -369,8 +375,131 @@ static bool _fm_is_text(const char *name)
 	return false;
 }
 
+static bool _fm_write_file(const char *path, const char *txt)
+{
+	if (sd_mount())
+		return false;
+
+	FIL *fp = malloc(sizeof(FIL));
+	if (f_open(fp, path, FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
+	{
+		free(fp);
+		return false;
+	}
+
+	u32 len = strlen(txt);
+	UINT bw = 0;
+	int res = f_write(fp, txt, len, &bw);
+
+	f_close(fp);
+	free(fp);
+
+	return res == FR_OK && bw == len;
+}
+
+static void _fm_view_exit_edit(void)
+{
+	if (fm_view_kb)
+	{
+		lv_obj_del(fm_view_kb);
+		fm_view_kb = NULL;
+	}
+
+	if (fm_view_ta)
+	{
+		lv_ta_set_cursor_type(fm_view_ta, LV_CURSOR_NONE);
+		lv_obj_set_size(fm_view_ta, LV_HOR_RES * 94 / 100, LV_VER_RES * 80 / 100);
+	}
+
+	fm_view_editing = false;
+}
+
+static lv_res_t _fm_view_save(lv_obj_t *kb)
+{
+	bool ok = _fm_write_file(fm_view_path, lv_ta_get_text(fm_view_ta));
+
+	_fm_view_exit_edit();
+	_fm_msg(ok ? "#96FF00 File saved.#" : "#FFDD00 Save failed!#");
+
+	return LV_RES_INV;
+}
+
+static lv_res_t _fm_view_edit_cancel(lv_obj_t *kb)
+{
+	_fm_view_exit_edit();
+
+	return LV_RES_INV;
+}
+
+static void _fm_view_toggle_edit(void)
+{
+	if (!fm_view_ta)
+		return;
+
+	if (fm_view_editing)
+	{
+		_fm_view_exit_edit();
+		return;
+	}
+
+	if (fm_view_truncated)
+	{
+		_fm_msg("#FFDD00 File too large to edit.#");
+		return;
+	}
+
+	fm_view_editing = true;
+
+	lv_ta_set_cursor_type(fm_view_ta, LV_CURSOR_LINE);
+	lv_obj_set_size(fm_view_ta, LV_HOR_RES * 94 / 100, LV_VER_RES * 48 / 100);
+
+	lv_obj_t *kb = lv_kb_create(lv_scr_act(), NULL);
+	lv_kb_set_ta(kb, fm_view_ta);
+	lv_kb_set_mode(kb, LV_KB_MODE_TEXT);
+	lv_kb_set_cursor_manage(kb, true);
+	lv_kb_set_ok_action(kb, _fm_view_save);
+	lv_kb_set_hide_action(kb, _fm_view_edit_cancel);
+	lv_obj_set_size(kb, LV_HOR_RES, LV_VER_RES * 2 / 5);
+	lv_obj_align(kb, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+	fm_view_kb = kb;
+}
+
+static lv_res_t _fm_view_edit_btn(lv_obj_t *btn)
+{
+	_fm_view_toggle_edit();
+
+	return LV_RES_OK;
+}
+
+static void _fm_view_dpad(int dir)
+{
+	if (!fm_view_editing || !fm_view_ta)
+		return;
+
+	switch (dir)
+	{
+	case NYX_DPAD_LEFT:  lv_ta_cursor_left(fm_view_ta);  break;
+	case NYX_DPAD_RIGHT: lv_ta_cursor_right(fm_view_ta); break;
+	case NYX_DPAD_UP:    lv_ta_cursor_up(fm_view_ta);    break;
+	case NYX_DPAD_DOWN:  lv_ta_cursor_down(fm_view_ta);  break;
+	}
+}
+
 static lv_res_t _fm_view_close(lv_obj_t *btn)
 {
+	nyx_jc_y_action = NULL;
+	nyx_jc_dpad_action = NULL;
+
+	if (fm_view_kb)
+	{
+		lv_obj_del(fm_view_kb);
+		fm_view_kb = NULL;
+	}
+
+	fm_view_ta = NULL;
+	fm_view_win = NULL;
+	fm_view_editing = false;
+
 	lv_obj_set_hidden(status_bar.bar_bg, false);
 	lv_obj_set_hidden(status_bar.line_bottom, false);
 
@@ -385,12 +514,10 @@ static void _fm_view_text(void)
 		return;
 	}
 
-	char *path = malloc(FM_PATH_SIZE);
-	_fm_join(path, fm.cwd, fm.sel);
+	_fm_join(fm_view_path, fm.cwd, fm.sel);
 
 	FIL *fp = malloc(sizeof(FIL));
-	int res = f_open(fp, path, FA_READ | FA_OPEN_EXISTING);
-	free(path);
+	int res = f_open(fp, fm_view_path, FA_READ | FA_OPEN_EXISTING);
 
 	if (res != FR_OK)
 	{
@@ -426,6 +553,8 @@ static void _fm_view_text(void)
 	if (truncated)
 		strcpy(&text[total], "\n\n[... file truncated ...]");
 
+	fm_view_truncated = truncated;
+
 	char title[FM_NAME_SIZE + 16];
 	s_printf(title, SYMBOL_FILE"  %s", fm.sel);
 
@@ -433,13 +562,22 @@ static void _fm_view_text(void)
 	lv_obj_set_hidden(status_bar.line_bottom, true);
 
 	lv_obj_t *win = nyx_create_standard_window(title, _fm_view_close);
+	lv_win_add_btn(win, NULL, SYMBOL_EDIT" Edit", _fm_view_edit_btn);
+	fm_view_win = win;
+	fm_view_kb = NULL;
+	fm_view_editing = false;
 
-	lv_obj_t *lbl = lv_label_create(win, NULL);
-	lv_obj_set_style(lbl, &monospace_text);
-	lv_label_set_long_mode(lbl, LV_LABEL_LONG_BREAK);
-	lv_obj_set_width(lbl, LV_HOR_RES * 92 / 100);
-	lv_label_set_text(lbl, text);
-	lv_obj_align(lbl, NULL, LV_ALIGN_IN_TOP_LEFT, LV_DPI / 4, LV_DPI / 8);
+	lv_obj_t *ta = lv_ta_create(win, NULL);
+	lv_ta_ext_t *ta_ext = lv_obj_get_ext_attr(ta);
+	lv_obj_set_style(ta_ext->label, &monospace_text);
+	lv_ta_set_cursor_type(ta, LV_CURSOR_NONE);
+	lv_ta_set_text(ta, text);
+	lv_obj_set_size(ta, LV_HOR_RES * 94 / 100, LV_VER_RES * 80 / 100);
+	lv_obj_align(ta, NULL, LV_ALIGN_IN_TOP_MID, 0, LV_DPI / 8);
+	fm_view_ta = ta;
+
+	nyx_jc_y_action = _fm_view_toggle_edit;
+	nyx_jc_dpad_action = _fm_view_dpad;
 
 	free(text);
 }

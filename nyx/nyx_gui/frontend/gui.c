@@ -47,6 +47,9 @@ lv_obj_t *payload_list;
 lv_obj_t *autorcm_btn;
 lv_obj_t *close_btn;
 
+void (*nyx_jc_y_action)(void) = NULL;
+void (*nyx_jc_dpad_action)(int dir) = NULL;
+
 lv_img_dsc_t *icon_switch;
 lv_img_dsc_t *icon_payload;
 lv_img_dsc_t *icon_lakka;
@@ -622,6 +625,33 @@ console:
 		lv_action_t close_btn_action = lv_btn_get_action(close_btn, LV_BTN_ACTION_CLICK);
 		close_btn_action(close_btn);
 		close_btn = NULL;
+	}
+
+	// Y button action
+	static bool jc_y_last = false;
+	if (jc_pad->y && !jc_y_last && nyx_jc_y_action)
+		nyx_jc_y_action();
+	jc_y_last = jc_pad->y;
+
+	// D-pad action. Fires on press and repeats while held.
+	if (nyx_jc_dpad_action)
+	{
+		static int dpad_last = -1;
+		static u32 dpad_ms = 0;
+
+		int dir = -1;
+		if (jc_pad->left)       dir = NYX_DPAD_LEFT;
+		else if (jc_pad->right) dir = NYX_DPAD_RIGHT;
+		else if (jc_pad->up)    dir = NYX_DPAD_UP;
+		else if (jc_pad->down)  dir = NYX_DPAD_DOWN;
+
+		u32 now = (u32)get_tmr_ms();
+		if (dir != -1 && (dir != dpad_last || (now - dpad_ms) > 120))
+		{
+			nyx_jc_dpad_action(dir);
+			dpad_ms = now;
+		}
+		dpad_last = dir;
 	}
 
 	return false; // No buffering so no more data read.

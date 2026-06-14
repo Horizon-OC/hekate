@@ -59,6 +59,16 @@ extern lv_obj_t *payload_list;
 extern lv_obj_t *autorcm_btn;
 extern lv_obj_t *close_btn;
 
+enum {
+	NYX_DPAD_LEFT,
+	NYX_DPAD_RIGHT,
+	NYX_DPAD_UP,
+	NYX_DPAD_DOWN
+};
+
+extern void (*nyx_jc_y_action)(void);
+extern void (*nyx_jc_dpad_action)(int dir);
+
 extern lv_img_dsc_t *icon_switch;
 extern lv_img_dsc_t *icon_payload;
 extern lv_img_dsc_t *icon_lakka;
