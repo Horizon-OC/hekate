@@ -2477,7 +2477,7 @@ static void _nyx_main_menu(lv_theme_t * th)
 	// Add all tabs content.
 	char version[32];
 	char rel = (nyx_str->version >> 24) & 0xFF;
-	s_printf(version, "hekate %s%d.%d.%d%c%c",
+	s_printf(version, "hockate %s%d.%d.%d%c%c",
 			 rel ? "v" : "", nyx_str->version & 0xFF, (nyx_str->version >> 8) & 0xFF, (nyx_str->version >> 16) & 0xFF, rel > 'a' ? rel : 0,
 			 (nyx_str->info_ex.rsvd_flags & RSVD_FLAG_DRAM_8GB) ? '*' : 0);
 	lv_obj_t *tab_about = lv_tabview_add_tab(tv, version);
