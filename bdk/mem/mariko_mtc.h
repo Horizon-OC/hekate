@@ -17,3 +17,4 @@
 #pragma once
 
 void MarikoTrainMemory(bool *out_did_training);
+void RestoreMemoryClockRateMariko();

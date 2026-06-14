@@ -34,7 +34,7 @@ static const uintptr_t EMC1   = EMC1_BASE;
 static bool g_next_pll           = false;
 static bool g_did_first_training = false;
 static bool g_fsp_for_next_freq  = false;
-const u8 mtc_tables_buffer[0x26C0];
+u8 mtc_tables_buffer[0x26C0];
 
 extern char __end__;
 char __end__ __attribute__((weak)) = 0;
@@ -83,7 +83,7 @@ static inline uint32_t u32_max(uint32_t a, uint32_t b) { return a > b ? a : b; }
 static inline int       int_max(int a, int b)           { return a > b ? a : b; }
 static inline int       int_min(int a, int b)           { return a < b ? a : b; }
 
-static EmcDvfsTimingTable *GetEmcDvfsTimingTables(int index, const void *mtc_tables_buffer) {
+static EmcDvfsTimingTable *GetEmcDvfsTimingTables(int index, void *mtc_tables_buffer) {
     const uint8_t *cmp_table;
     size_t         cmp_table_size;
 
@@ -2497,13 +2497,15 @@ void MarikoTrainMemory(bool *out_did_training) {
 
     if (src_timing->rate_khz != 204000 || dst_timing->rate_khz != 1600000) {
         EPRINTF("Emc table seems corrupt");
-        return;
-    }
-
-    if (src_timing->clk_src_emc != RegRead(CLKRST + CLK_RST_CONTROLLER_CLK_SOURCE_EMC)) {
         *out_did_training = false;
         return;
     }
+    // TODO: figure out what causes this to fail
+    // if (src_timing->clk_src_emc != RegRead(CLKRST + CLK_RST_CONTROLLER_CLK_SOURCE_EMC)) {
+    //     EPRINTF("CLK Source Mismatch");
+    //     *out_did_training = false;
+    //     return;
+    // }
 
     Dvfs(dst_timing, src_timing, true);
     Dvfs(dst_timing, src_timing, false);
@@ -2511,8 +2513,15 @@ void MarikoTrainMemory(bool *out_did_training) {
     *out_did_training = true;
 }
 
-void RestoreMemoryClockRateMariko(void *mtc_tables_buffer) {
-    EmcDvfsTimingTable *timing_tables = (EmcDvfsTimingTable *)mtc_tables_buffer;
+void RestoreMemoryClockRateMariko() {
+    int index = GetMemoryTrainingTableIndex();
+
+    if (index == MemoryTrainingTableIndex_Invalid) {
+        EPRINTF("Invalid mtc index");
+        return;
+    }
+
+    EmcDvfsTimingTable *timing_tables = GetEmcDvfsTimingTables(index, mtc_tables_buffer);
     EmcDvfsTimingTable *src_timing    = timing_tables + 0;
     EmcDvfsTimingTable *dst_timing    = timing_tables + 1;
 

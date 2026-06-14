@@ -25,6 +25,7 @@
 #include <input/joycon.h>
 #include <input/touch.h>
 #include <mem/emc_t210.h>
+#include <mem/mariko_mtc.h>
 #include <mem/heap.h>
 #include <mem/mc.h>
 #include <mem/minerva.h>
