@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <storage/sd.h>
 #include <string.h>
 
 #include <bdk.h>
@@ -230,8 +231,7 @@ void print_sdcard_info()
 			sd_storage.ssr.app_class, sd_storage.csd.write_protect,
 			sd_errors[0], sd_errors[1], sd_errors[2]); // SD_ERROR_INIT_FAIL, SD_ERROR_RW_FAIL, SD_ERROR_RW_RETRY.
 
-		int res = f_mount(&sd_fs, "", 1);
-		if (!res)
+		if (sd_mount())
 		{
 			gfx_puts("Acquiring FAT volume info...\n\n");
 			gfx_printf("%kFound %s volume:%k\n Free:    %d MiB\n Cluster: %d KiB\n",
@@ -241,8 +241,8 @@ void print_sdcard_info()
 		}
 		else
 		{
-			EPRINTFARGS("Failed to mount SD card (FatFS Error %d).\n"
-				"Make sure that a FAT partition exists..", res);
+			EPRINTF("Failed to mount SD card.\n"
+				"Make sure that a FAT partition exists..");
 		}
 
 		sd_end();

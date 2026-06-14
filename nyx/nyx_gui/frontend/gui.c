@@ -19,6 +19,7 @@
 #include <bdk.h>
 
 #include "gui.h"
+#include "gui_emu_tools.h"
 #include "gui_emummc_tools.h"
 #include "gui_tools.h"
 #include "gui_tools_files.h"
@@ -30,6 +31,7 @@
 
 #include "../config.h"
 #include <libs/fatfs/ff.h>
+#include <storage/boot_storage.h>
 
 extern volatile boot_cfg_t *b_cfg;
 extern volatile nyx_storage_t *nyx_str;
@@ -193,7 +195,7 @@ static void _save_log_to_bmp(char *fname)
 	char path[0x80];
 	strcpy(path, "bootloader/screenshots");
 	s_printf(path + strlen(path), "/nyx%s_log.bmp", fname);
-	sd_save_to_file(bitmap, file_size, path);
+	boot_storage_save_to_file(bitmap, file_size, path);
 
 	free(bitmap);
 	free(fb);
@@ -277,7 +279,7 @@ static void _save_fb_to_bmp()
 	bmp->res_v    = 2834;
 	bmp->rsvd2    = 0;
 
-	sd_mount();
+	boot_storage_mount();
 
 	char path[0x80];
 
@@ -294,7 +296,7 @@ static void _save_fb_to_bmp()
 	s_printf(path + strlen(path), "/nyx%s.bmp", fname);
 
 	// Save screenshot and log.
-	int res = sd_save_to_file(bitmap, file_size, path);
+	int res = boot_storage_save_to_file(bitmap, file_size, path);
 	if (!res)
 		_save_log_to_bmp(fname);
 
@@ -690,7 +692,7 @@ void manual_system_maintenance(bool refresh)
 lv_img_dsc_t *bmp_to_lvimg_obj(const char *path)
 {
 	u32 fsize;
-	u8 *bitmap = sd_file_read(path, &fsize);
+	u8 *bitmap = boot_storage_file_read(path, &fsize);
 	if (!bitmap)
 		return NULL;
 
@@ -945,7 +947,9 @@ static void _launch_hos(u8 autoboot, u8 autoboot_list)
 
 	void (*main_ptr)() = (void *)nyx_str->hekate;
 
+	boot_storage_end();
 	sd_end();
+	emmc_end();
 
 	hw_deinit(false);
 
@@ -980,6 +984,9 @@ void reload_nyx(lv_obj_t *obj, bool force)
 
 	void (*main_ptr)() = (void *)nyx_str->hekate;
 
+	// TODO: 
+	boot_storage_end();
+	emmc_end();
 	sd_end();
 
 	hw_deinit(false);
@@ -990,7 +997,7 @@ void reload_nyx(lv_obj_t *obj, bool force)
 static lv_res_t reload_action(lv_obj_t *btns, const char *txt)
 {
 	if (!lv_btnm_get_pressed(btns))
-		reload_nyx(NULL, false);
+		reload_nyx(NULL, true);
 
 	return nyx_mbox_action(btns, txt);
 }
@@ -1026,7 +1033,7 @@ static void _check_sd_card_removed(void *params)
 	// The following checks if SDMMC_1 is initialized.
 	// If yes and card was removed, shows a message box,
 	// that will reload Nyx, when the card is inserted again.
-	if (!do_auto_reload && sd_get_card_removed())
+	if (!do_auto_reload && sd_get_card_removed() && boot_storage_get_drive() == DRIVE_SD)
 	{
 		dark_bg = lv_obj_create(lv_scr_act(), NULL);
 		lv_obj_set_style(dark_bg, &mbox_darken);
@@ -1048,8 +1055,8 @@ static void _check_sd_card_removed(void *params)
 	}
 
 	// If in reload state and card was inserted, reload nyx.
-	if (do_auto_reload && !sd_get_card_removed())
-		reload_nyx(dark_bg, false);
+	if (do_auto_reload && !sd_get_card_removed() && boot_storage_get_drive() == DRIVE_SD)
+		reload_nyx(NULL, true);
 }
 
 lv_task_t *task_emmc_errors;
@@ -1503,8 +1510,9 @@ static lv_res_t _create_mbox_payloads(lv_obj_t *btn)
 	lv_obj_set_size(list, LV_HOR_RES * 3 / 7, LV_VER_RES * 3 / 7);
 	lv_list_set_single_mode(list, true);
 
-	if (sd_mount())
+	if (!boot_storage_mount())
 	{
+		// TODO: may not be SD, change error
 		lv_mbox_set_text(mbox, "#FFDD00 Failed to init SD!#");
 
 		goto out_end;
@@ -1815,7 +1823,7 @@ static lv_res_t _create_window_home_launch(lv_obj_t *btn)
 	u32 curr_btn_idx = 0; // Active buttons.
 	LIST_INIT(ini_sections);
 
-	if (sd_mount())
+	if (!boot_storage_mount())
 		goto failed_sd_mount;
 
 	// Check if we use custom system icons.
@@ -2024,7 +2032,7 @@ failed_sd_mount:
 	if (curr_btn_idx < 1)
 		no_boot_entries = true;
 
-	sd_unmount();
+	boot_storage_unmount();
 
 	free(tmp_path);
 
@@ -2065,7 +2073,7 @@ static void _create_tab_home(lv_theme_t *th, lv_obj_t *parent)
 	// Set brand label.
 	lv_obj_t *label_brand = lv_label_create(parent, NULL);
 	lv_label_set_recolor(label_brand, true);
-	s_printf(btn_colored_text, "%s%s", text_color, " hekate#");
+	s_printf(btn_colored_text, "%s%s", text_color, " hekate-pro#");
 	lv_label_set_text(label_brand, btn_colored_text);
 	lv_obj_set_pos(label_brand, 50, 48);
 
@@ -2161,7 +2169,7 @@ static void _create_tab_home(lv_theme_t *th, lv_obj_t *parent)
 	label_btn = lv_label_create(btn_emummc, label_btn);
 	s_printf(btn_colored_text, "%s%s", text_color, " "SYMBOL_LIST"#");
 	lv_label_set_text(label_btn, btn_colored_text);
-	lv_btn_set_action(btn_emummc, LV_BTN_ACTION_CLICK, create_win_emummc_tools);
+	lv_btn_set_action(btn_emummc, LV_BTN_ACTION_CLICK, create_win_emu_tools);
 	lv_btn_set_layout(btn_emummc, LV_LAYOUT_OFF);
 	lv_obj_align(label_btn, NULL, LV_ALIGN_CENTER, 0, -28);
 	lv_obj_set_pos(btn_emummc, 959, 160);
@@ -2193,8 +2201,8 @@ static lv_res_t _save_options_action(lv_obj_t *btn)
 
 	int res = 0;
 
-	if (!sd_mount())
-		res = create_config_entry();
+	if (boot_storage_mount())
+		res = !create_config_entry();
 
 	if (!res)
 		lv_mbox_set_text(mbox, "#FF8000 hekate Configuration#\n\n#96FF00 The configuration was saved to sd card!#");
@@ -2205,7 +2213,7 @@ static lv_res_t _save_options_action(lv_obj_t *btn)
 
 	nyx_options_clear_ini_changes_made();
 
-	sd_unmount();
+	boot_storage_unmount();
 
 	return LV_RES_OK;
 }

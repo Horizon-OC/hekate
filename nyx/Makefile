@@ -29,18 +29,19 @@ TRACK_LDFLAGS = $(BUILDDIR)/.ldflags
 # Main and graphics.
 OBJS =  start exception_handlers nyx heap gfx \
 		gui gui_info gui_tools gui_options gui_emmc_tools gui_emummc_tools gui_tools_partition_manager \
-		gui_tools_files fe_emummc_tools fe_emmc_tools
+		gui_tools_files gui_emu_tools gui_emusd_tools \
+		fe_emummc_tools fe_emmc_tools fe_emusd_tools
 
 # Hardware.
 OBJS += actmon bpmp ccplex clock di vic i2c irq timer \
 		gpio  pinmux pmc se smmu tsec uart \
 		fuse kfuse \
 		mc sdram minerva ramdisk \
-		sdmmc sdmmc_driver emmc sd nx_emmc_bis \
+		sdmmc sdmmc_driver emmc sd nx_emmc_bis emummc_file_based \
 		bm92t36 bq24193 max17050 max7762x max77620-rtc regulator_5v \
 		touch joycon tmp451 fan \
 		usbd xusbd usb_descriptors usb_gadget_ums usb_gadget_hid \
-		hw_init mariko_mtc mtc_uncompress
+		hw_init mariko_mtc mtc_uncompress boot_storage sfd mbr_gpt file_based_storage
 
 # Utilities.
 OBJS += btn dirlist ianos ini util config sprintf

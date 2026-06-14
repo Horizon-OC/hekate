@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <storage/boot_storage.h>
 #include <string.h>
 
 #include <bdk.h>
@@ -27,6 +28,7 @@
 #include <libs/compr/blz.h>
 #include <libs/fatfs/ff.h>
 #include "../storage/emummc.h"
+#include "../storage/emusd.h"
 
 //#define DPRINTF(...) gfx_printf(__VA_ARGS__)
 #define DPRINTF(...)
@@ -66,6 +68,7 @@ static void parse_external_kip_patches()
 	ext_patches_parsed = true;
 
 	LIST_INIT(ini_kip_sections);
+	// TODO: load frome emusd?
 	if (ini_patch_parse(&ini_kip_sections, "bootloader/patches.ini"))
 		return;
 
@@ -375,7 +378,7 @@ static int _kipm_inject(const char *kipm_path, char *target_name, pkg2_kip1_info
 		return 1;
 
 	u32 size = 0;
-	u8 *kipm_data = (u8 *)sd_file_read(kipm_path, &size);
+	u8 *kipm_data = (u8 *)boot_storage_file_read(kipm_path, &size);
 	if (!kipm_data)
 		return 1;
 
@@ -653,6 +656,8 @@ const char *pkg2_patch_kips(link_t *info, char *patch_names)
 					emu_cfg.fs_ver--;
 				if (kip_id_idx > 17)
 					emu_cfg.fs_ver -= 2;
+
+				emu_sd_cfg.fs_ver = emu_cfg.fs_ver;
 
 				// Inject emuMMC code.
 				gfx_printf("Injecting emuMMC. FS ID: %d\n", emu_cfg.fs_ver);

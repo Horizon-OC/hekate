@@ -27,6 +27,7 @@
 #include <mem/mariko_mtc.h>
 #include <libs/compr/blz.h>
 #include <libs/fatfs/ff.h>
+#include <storage/boot_storage.h>
 
 #include "frontend/fe_emmc_tools.h"
 #include "frontend/gui.h"
@@ -35,7 +36,7 @@ nyx_config n_cfg;
 hekate_config h_cfg;
 
 const volatile ipl_ver_meta_t __attribute__((section ("._ipl_version"))) ipl_ver = {
-	.magic = NYX_MAGIC,
+	.magic   = NYX_MAGIC,
 	.version = (NYX_VER_MJ + '0') | ((NYX_VER_MN + '0') << 8) | ((NYX_VER_HF + '0') << 16) | ((NYX_VER_RL) << 24),
 };
 
@@ -122,7 +123,7 @@ lv_res_t launch_payload(lv_obj_t *list)
 	strcpy(path,"bootloader/payloads/");
 	strcat(path, filename);
 
-	if (sd_mount())
+	if (!boot_storage_mount())
 		goto out;
 
 	// Read payload.
@@ -143,7 +144,7 @@ lv_res_t launch_payload(lv_obj_t *list)
 		goto out;
 	}
 
-	sd_end();
+	boot_storage_end();
 
 	// Copy the payload to our chosen address.
 	memcpy((void *)RCM_PAYLOAD_ADDR, buf, size);
@@ -328,8 +329,8 @@ static void _show_errors(int sd_error)
 
 	if (*excp_enabled == EXCP_MAGIC || sd_error)
 	{
-		gfx_clear_grey(0);
-		gfx_con_setpos(0, 0, 0);
+		// gfx_clear_grey(0);
+		// gfx_con_setpos(0, 0, 0);
 		display_backlight_brightness(150, 1000);
 		display_init_window_d_console();
 		display_window_d_console_enable();
@@ -426,13 +427,13 @@ void nyx_init_load_res()
 	_show_errors(SD_NO_ERROR);
 
 	// Try 2 times to mount SD card.
-	if (sd_mount())
+	if (!boot_storage_mount())
 	{
 		// Restore speed to SDR104.
-		sd_end();
+		boot_storage_end();
 
 		// Retry.
-		if (sd_mount())
+		if (!boot_storage_mount())
 			_show_errors(SD_MOUNT_ERROR); // Fatal.
 	}
 
@@ -498,7 +499,7 @@ void nyx_init_load_res()
 	nyx_load_bg_icons();
 
 	// Unmount FAT partition.
-	sd_unmount();
+	boot_storage_unmount();
 }
 
 void ipl_main()

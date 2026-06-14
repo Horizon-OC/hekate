@@ -23,6 +23,7 @@
 #include <bdk.h>
 
 #include "hos.h"
+#include <storage/boot_storage.h>
 #include "../config.h"
 
 u8 *cal0_buf = NULL;
@@ -182,12 +183,12 @@ static int _hos_eks_rw_try(u8 *buf, bool write)
 	{
 		if (!write)
 		{
-			if (!sdmmc_storage_read(&sd_storage, 0, 1, buf))
+			if (sdmmc_storage_read(&sd_storage, 0, 1, buf))
 				return 0;
 		}
 		else
 		{
-			if (!sdmmc_storage_write(&sd_storage, 0, 1, buf))
+			if (sdmmc_storage_write(&sd_storage, 0, 1, buf))
 				return 0;
 		}
 	}
@@ -384,7 +385,7 @@ int hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt)
 		 */
 
 		// Use custom TSEC Hovi Keygen firmware.
-		tsec_ctxt->fw = sd_file_read("bootloader/sys/thk.bin", NULL);
+		tsec_ctxt->fw = boot_storage_file_read("bootloader/sys/thk.bin", NULL);
 		if (!tsec_ctxt->fw)
 		{
 			EPRINTF("\nFailed to load thk.bin");
@@ -670,7 +671,7 @@ void hos_bis_keys_clear()
 int hos_dump_cal0()
 {
 	// Init eMMC.
-	if (emmc_initialize(false))
+	if (!emmc_initialize(false))
 		return 1;
 
 	// Generate BIS keys
@@ -685,7 +686,7 @@ int hos_dump_cal0()
 	LIST_INIT(gpt);
 	emmc_gpt_parse(&gpt);
 	emmc_part_t *cal0_part = emmc_part_find(&gpt, "PRODINFO"); // check if null
-	nx_emmc_bis_init(cal0_part, false, 0);
+	nx_emmc_bis_init(cal0_part, false, NULL, 0);
 	nx_emmc_bis_read(0, 0x40, cal0_buf);
 	nx_emmc_bis_end();
 	emmc_gpt_free(&gpt);

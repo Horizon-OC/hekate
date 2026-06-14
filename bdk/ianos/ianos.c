@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <storage/boot_storage.h>
 #include <string.h>
 
 #include "ianos.h"
@@ -59,7 +60,7 @@ int ianos_loader(ianos_lib_t *lib, char *path)
 		lib->bdk = &_bdk_params;
 
 	// Read library.
-	ctx.eaddr = (Elf_Addr)sd_file_read(path, NULL);
+	ctx.eaddr = (Elf_Addr)boot_storage_file_read(path, NULL);
 	if (!ctx.eaddr)
 		goto error;
 

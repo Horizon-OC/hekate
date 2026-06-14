@@ -105,6 +105,9 @@ typedef unsigned long uptr;
 #define likely(x)   (__builtin_expect((x) != 0, 1))
 #define unlikely(x) (__builtin_expect((x) != 0, 0))
 
+#define XSTR(a) STR(a)
+#define STR(a) #a
+
 /* Bootloader/Nyx */
 #define BOOT_CFG_AUTOBOOT_EN BIT(0)
 #define BOOT_CFG_FROM_LAUNCH BIT(1)
@@ -126,7 +129,12 @@ typedef enum _nyx_ums_type
 	NYX_UMS_EMMC_GPP,
 	NYX_UMS_EMUMMC_BOOT0,
 	NYX_UMS_EMUMMC_BOOT1,
-	NYX_UMS_EMUMMC_GPP
+	NYX_UMS_EMUMMC_GPP,
+	NYX_UMS_BOOT_STRG_SD,
+	NYX_UMS_BOOT_STRG_BOOT1,
+	NYX_UMS_BOOT_STRG_BOOT1_1MB,
+	NYX_UMS_BOOT_STRG_GPP,
+	NYX_UMS_EMUSD,
 } nyx_ums_type;
 
 typedef struct __attribute__((__packed__)) _boot_cfg_t

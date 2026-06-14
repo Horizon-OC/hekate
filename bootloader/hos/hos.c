@@ -28,6 +28,8 @@
 #include "../frontend/fe_tools.h"
 #include "../config.h"
 #include "../storage/emummc.h"
+#include "../storage/emusd.h"
+#include <storage/boot_storage.h>
 
 //#define DPRINTF(...) gfx_printf(__VA_ARGS__)
 #define DPRINTF(...)
@@ -139,12 +141,12 @@ static int _hos_eks_rw_try(u8 *buf, bool write)
 	{
 		if (!write)
 		{
-			if (!sdmmc_storage_read(&sd_storage, 0, 1, buf))
+			if (sdmmc_storage_read(&sd_storage, 0, 1, buf))
 				return 0;
 		}
 		else
 		{
-			if (!sdmmc_storage_write(&sd_storage, 0, 1, buf))
+			if (sdmmc_storage_write(&sd_storage, 0, 1, buf))
 				return 0;
 		}
 	}
@@ -352,7 +354,7 @@ static int _hos_keygen(pkg1_eks_t *eks, u32 mkey, tsec_ctxt_t *tsec_ctxt, bool s
 		 */
 
 		// Use custom TSEC Hovi Keygen firmware.
-		tsec_ctxt->fw = sd_file_read("bootloader/sys/thk.bin", NULL);
+		tsec_ctxt->fw = boot_storage_file_read("bootloader/sys/thk.bin", NULL);
 		if (!tsec_ctxt->fw)
 		{
 			_hos_crit_error("Failed to load thk.bin");
@@ -728,8 +730,14 @@ void hos_launch(ini_sec_t *cfg)
 		goto error;
 	}
 
+	if (emusd_storage_init_mmc() || !emusd_mount()) {
+		_hos_crit_error("error: Failed to init emuSD.");
+
+		goto error;
+	}
+
 	// Check if SD Card is GPT.
-	if (sd_is_gpt())
+	if (emusd_is_gpt())
 	{
 		_hos_crit_error("SD has GPT only! Run Fix Hybrid MBR!");
 		goto error;
@@ -748,6 +756,8 @@ void hos_launch(ini_sec_t *cfg)
 		// Check if stock is enabled and device can boot in OFW.
 		if (ctxt.stock && (h_cfg.t210b01 || !tools_autorcm_enabled()))
 		{
+			emummc_storage_end();
+			emusd_storage_end();
 			emmc_end();
 
 			WPRINTF("\nRebooting to OFW in 5s...");
@@ -760,7 +770,8 @@ void hos_launch(ini_sec_t *cfg)
 
 	mkey = ctxt.pkg1_id->mkey;
 
-	bool emummc_enabled = emu_cfg.enabled && !h_cfg.emummc_force_disable;
+	//  TODO: separate force_disable for emuSD?
+	bool emummc_enabled = (emu_cfg.enabled || emu_sd_cfg.enabled) && !h_cfg.emummc_force_disable;
 
 	// Enable emummc patching.
 	if (emummc_enabled)
@@ -996,7 +1007,7 @@ void hos_launch(ini_sec_t *cfg)
 	{
 		bool exfat_compat = _get_fs_exfat_compatible(&kip1_info, &ctxt.exo_ctx.hos_revision);
 
-		if (sd_fs.fs_type == FS_EXFAT && !exfat_compat)
+		if (emusd_get_fs_type() == FS_EXFAT && !exfat_compat)
 		{
 			_hos_crit_error("SD Card is exFAT but installed HOS driver\nonly supports FAT32!");
 
@@ -1029,6 +1040,9 @@ void hos_launch(ini_sec_t *cfg)
 		config_exosphere(&ctxt, warmboot_base);
 
 	// Unmount SD card and eMMC.
+	emummc_storage_end();
+	emusd_storage_end();
+	boot_storage_end();
 	sd_end();
 	emmc_end();
 
@@ -1129,6 +1143,8 @@ void hos_launch(ini_sec_t *cfg)
 
 error:
 	_free_launch_components(&ctxt);
+	emummc_storage_end();
+	emusd_storage_end();
 	emmc_end();
 
 	EPRINTF("\nFailed to launch HOS!");

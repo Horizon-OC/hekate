@@ -23,6 +23,7 @@
 #include "../config.h"
 #include <libs/lvgl/lv_themes/lv_theme_hekate.h>
 #include <libs/lvgl/lvgl.h>
+#include <storage/boot_storage.h>
 
 #define CLOCK_MIN_YEAR 2025
 #define CLOCK_MAX_YEAR (CLOCK_MIN_YEAR + 10)
@@ -224,7 +225,7 @@ static void _create_autoboot_window()
 	lv_obj_set_size(list_main, LV_HOR_RES * 4 / 10, LV_VER_RES * 4 / 7);
 	lv_list_set_single_mode(list_main, true);
 
-	sd_mount();
+	boot_storage_mount();
 
 	// Parse hekate main configuration.
 	LIST_INIT(ini_sections);
@@ -285,7 +286,7 @@ static void _create_autoboot_window()
 		ini_free(&ini_list_sections);
 	}
 
-	sd_unmount();
+	boot_storage_unmount();
 }
 
 static lv_res_t _autoboot_hide_delay_action(lv_obj_t *btn)
@@ -1192,7 +1193,7 @@ static lv_res_t _joycon_info_dump_action(lv_obj_t * btn)
 	jc_pad->bt_conn_r.type = is_r_hos ? jc_pad->bt_conn_r.type : 0;
 
 save_data:
-	error = sd_mount() ? 5 : 0;
+	error = !boot_storage_mount() ? 5 : 0;
 
 	if (!error)
 	{
@@ -1206,7 +1207,8 @@ save_data:
 			memcpy(data, &jc_pad->bt_conn_l, sizeof(jc_bt_conn_t));
 			memcpy(data + sizeof(jc_bt_conn_t), &jc_pad->bt_conn_r, sizeof(jc_bt_conn_t));
 
-			error = sd_save_to_file((u8 *)data, sizeof(jc_bt_conn_t) * 2, "switchroot/joycon_mac.bin") ? 4 : 0;
+			// TODO: JC dump should probably go to sd?
+			error = boot_storage_save_to_file((u8 *)data, sizeof(jc_bt_conn_t) * 2, "switchroot/joycon_mac.bin") ? 4 : 0;
 
 			// Save readable dump.
 			data[0] = 0;
@@ -1328,7 +1330,7 @@ save_data:
 			}
 		}
 
-		sd_unmount();
+		boot_storage_unmount();
 	}
 
 disabled_or_cal0_issue:;

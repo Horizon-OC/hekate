@@ -81,4 +81,10 @@ typedef struct _gpt_t
 	gpt_entry_t  entries[128];
 } gpt_t;
 
+bool mbr_has_gpt(const mbr_t *mbr);
+void wctombs(const u16 *src, char *dest, u32 len_max);
+void ctowcs(const char *src, u16 *dest, u32 len_max);
+s32 gpt_get_part_by_name(gpt_t *gpt, const char* name, s32 prev);
+
+
 #endif

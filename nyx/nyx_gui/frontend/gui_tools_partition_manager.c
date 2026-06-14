@@ -2971,7 +2971,7 @@ out:
 	return LV_RES_OK;
 }
 
-lv_res_t create_window_partition_manager(bool emmc)
+static lv_res_t _create_window_partition_manager(bool emmc)
 {
 	lv_obj_t *win;
 
@@ -3377,5 +3377,7 @@ lv_res_t create_window_partition_manager(bool emmc)
 	return LV_RES_OK;
 }
 
-lv_res_t create_window_sd_partition_manager(lv_obj_t *btn)   { return create_window_partition_manager(false); }
-lv_res_t create_window_emmc_partition_manager(lv_obj_t *btn) { return create_window_partition_manager(true);  }
+lv_res_t create_window_sd_partition_manager(lv_obj_t *btn)   { return _create_window_partition_manager(false); }
+lv_res_t create_window_emmc_partition_manager(lv_obj_t *btn) { return _create_window_partition_manager(true);  }
+
+lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive) { return _create_window_partition_manager(drive != DRIVE_SD); }

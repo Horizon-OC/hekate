@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 #include <utils/types.h>
+#include <fatfs_cfg.h>
 
 /* Status of Disk Functions */
 typedef BYTE	DSTATUS;
@@ -22,14 +23,6 @@ typedef enum {
 	RES_NOTRDY,		/* 3: Not Ready */
 	RES_PARERR		/* 4: Invalid Parameter */
 } DRESULT;
-
-typedef enum {
-	DRIVE_SD   = 0,
-	DRIVE_RAM  = 1,
-	DRIVE_EMMC = 2,
-	DRIVE_BIS  = 3,
-	DRIVE_EMU  = 4
-} DDRIVE;
 
 
 /*---------------------------------------*/

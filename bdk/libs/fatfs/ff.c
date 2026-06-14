@@ -42,8 +42,8 @@
 #include <utils/util.h>
 #include <gfx_utils.h>
 
-#define EFSPRINTF(text, ...) print_error(); gfx_printf("%k"text"%k\n", 0xFFFFFF00, 0xFFFFFFFF);
-//#define EFSPRINTF(...)
+// #define EFSPRINTF(text, ...) print_error(); gfx_printf("%k"text"%k\n", 0xFFFFFF00, 0xFFFFFFFF);
+#define EFSPRINTF(...)
 
 /*--------------------------------------------------------------------------
 
@@ -472,6 +472,10 @@ static FILESEM Files[FF_FS_LOCK];	/* Open object lock semaphores */
 #ifdef FF_VOLUME_STRS
 static const char* const VolumeStr[FF_VOLUMES] = {FF_VOLUME_STRS};	/* Pre-defined volume ID */
 #endif
+#endif
+
+#if FF_SIMPLE_GPT
+static const BYTE GUID_MS_Basic[16] = {0xA2,0xA0,0xD0,0xEB,0xE5,0xB9,0x33,0x44,0x87,0xC0,0x68,0xB6,0xB7,0x26,0x99,0xC7};
 #endif
 
 
@@ -3320,15 +3324,28 @@ static FRESULT find_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 	}
 #if FF_SIMPLE_GPT
 	if (fmt >= 2) {
-		/* If GPT Check the first partition */
+		/* If GPT, iterate over all part entries and check MS Basic partitions */
 		gpt_header_t *gpt_header = (gpt_header_t *)fs->win;
 		if (move_window(fs, 1) != FR_OK) return FR_DISK_ERR;
 		if (!mem_cmp(&gpt_header->signature, "EFI PART", 8)) {
-			if (move_window(fs, gpt_header->part_ent_lba) != FR_OK) return FR_DISK_ERR;
-			gpt_entry_t *gpt_entry = (gpt_entry_t *)fs->win;
-			fs->part_type = 1;
-			bsect = gpt_entry->lba_start;
-			fmt = bsect ? check_fs(fs, bsect) : 3;	/* Check the partition */
+			DWORD cur_entry, ofs, part;
+			part = LD2PT(vol);
+			cur_entry = 0;
+			for(i = 0; i < gpt_header->num_part_ents; i++){
+				if (move_window(fs, gpt_header->part_ent_lba + i * sizeof(gpt_entry_t) / SS(fs))) return FR_DISK_ERR;
+				ofs = i * sizeof(gpt_entry_t) % SS(fs);
+				gpt_entry_t *gpt_entry = (gpt_entry_t *)fs->win + ofs;
+				if (!mem_cmp(gpt_entry->type_guid, GUID_MS_Basic, 16)){
+					cur_entry++;
+					bsect = gpt_entry->lba_start;
+					fmt = bsect ? check_fs(fs, bsect) : 3;
+					if(part == 0 && fmt <= 1) break;
+					if(part != 0 && cur_entry == part) break;
+				}
+			}
+			if(part && part != cur_entry){
+				fmt = 3;
+			}
 		}
 	}
 #endif

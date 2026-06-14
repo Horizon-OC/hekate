@@ -19,6 +19,6 @@
 
 #include <libs/lvgl/lvgl.h>
 
-lv_res_t create_win_emummc_tools(lv_obj_t *btn);
+lv_res_t create_tab_emummc_tools(lv_obj_t *parent);
 
 #endif

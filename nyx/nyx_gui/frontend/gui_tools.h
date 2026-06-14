@@ -25,5 +25,6 @@ void create_tab_tools(lv_theme_t *th, lv_obj_t *parent);
 void nyx_run_ums(void *param);
 bool get_set_autorcm_status(bool change);
 lv_res_t action_ums_sd(lv_obj_t *btn);
+lv_res_t action_ums_emmc_gpp(lv_obj_t *btn);
 
 #endif
