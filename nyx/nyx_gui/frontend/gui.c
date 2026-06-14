@@ -2073,7 +2073,7 @@ static void _create_tab_home(lv_theme_t *th, lv_obj_t *parent)
 	// Set brand label.
 	lv_obj_t *label_brand = lv_label_create(parent, NULL);
 	lv_label_set_recolor(label_brand, true);
-	s_printf(btn_colored_text, "%s%s", text_color, " hekate-pro#");
+	s_printf(btn_colored_text, "%s%s", text_color, " hockate#");
 	lv_label_set_text(label_brand, btn_colored_text);
 	lv_obj_set_pos(label_brand, 50, 48);
 
