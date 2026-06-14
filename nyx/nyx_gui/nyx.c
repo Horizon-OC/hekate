@@ -259,6 +259,8 @@ skip_main_cfg_parse:
 					n_cfg.jc_force_right = atoi(kv->val) == 1;
 				else if (!strcmp("bpmpclock",    kv->key))
 					n_cfg.bpmp_clock     = atoi(kv->val);
+				else if (!strcmp("advancedfeatures", kv->key))
+					n_cfg.advanced_features = atoi(kv->val);
 			}
 
 			// Check if user canceled time setting before.

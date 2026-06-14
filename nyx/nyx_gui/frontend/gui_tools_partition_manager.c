@@ -33,6 +33,7 @@
 #include "gui_tools.h"
 #include "fe_emummc_tools.h"
 #include "gui_tools_partition_manager.h"
+#include "../config.h"
 #include "../hos/hos.h"
 #include <libs/fatfs/diskio.h>
 #include <libs/lvgl/lvgl.h>
@@ -4401,11 +4402,11 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_t *lbl_emu_sd = lv_label_create(	h1, lbl_hos);
 	lv_label_set_static_text(lbl_emu_sd, "#FF00D6 " SYMBOL_DOT " emuSD:#");
 	lv_obj_align(lbl_emu_sd, lbl_emu, LV_ALIGN_OUT_BOTTOM_LEFT, 0, spacing);
-	lv_obj_set_hidden(lbl_emu_sd, false);
+	lv_obj_set_hidden(lbl_emu_sd, !n_cfg.advanced_features);
 
 	lv_obj_t *lbl_l4t = lv_label_create(h1, lbl_hos);
 	lv_label_set_static_text(lbl_l4t, "#00DDFF "SYMBOL_DOT" Linux (EXT4):#");
-	lv_obj_align(lbl_l4t, lbl_emu_sd, LV_ALIGN_OUT_BOTTOM_LEFT, 0, spacing);
+	lv_obj_align(lbl_l4t, n_cfg.advanced_features ? lbl_emu_sd : lbl_emu, LV_ALIGN_OUT_BOTTOM_LEFT, 0, spacing);
 
 	lv_obj_t *lbl_and = lv_label_create(h1, lbl_hos);
 	lv_label_set_static_text(lbl_and, "#FF8000 "SYMBOL_DOT" Android (USER):#");
@@ -4492,7 +4493,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_slider_set_style(slider_emu_sd, LV_SLIDER_STYLE_KNOB, &bar_emu_sd_btn);
 	lv_obj_align(slider_emu_sd, lbl_emu_sd, LV_ALIGN_IN_LEFT_MID, LV_DPI * 3, 0);
 	lv_slider_set_action(slider_emu_sd, _action_slider_emu_sd);
-	lv_obj_set_hidden(slider_emu_sd, false);
+	lv_obj_set_hidden(slider_emu_sd, !n_cfg.advanced_features);
 	part_info.slider_emu_sd = slider_emu_sd;
 
 	// Create HOS OS size lable
@@ -4538,7 +4539,7 @@ lv_res_t create_window_partition_manager(lv_obj_t *btn, u8 drive)
 	lv_obj_t *lbl_sl_emu_sd = lv_label_create(h1, lbl_sl_hos);
 	lv_label_set_text(lbl_sl_emu_sd, "#FF00D6 0 GiB#");
 	lv_obj_align(lbl_sl_emu_sd, slider_emu_sd, LV_ALIGN_OUT_RIGHT_MID, LV_DPI * 4 / 7, 0);
-	lv_obj_set_hidden(lbl_sl_emu_sd, false);
+	lv_obj_set_hidden(lbl_sl_emu_sd, !n_cfg.advanced_features);
 	part_info.lbl_emu_sd = lbl_sl_emu_sd;
 
 	// Set partition manager notes.

@@ -930,18 +930,22 @@ static lv_res_t _create_window_usb_tools(lv_obj_t *parent)
 	lv_obj_set_style(label_txt2, &hint_small_style);
 	lv_obj_align(label_txt2, btn1, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 3);
 
-	// Create emuSD button
-	lv_obj_t *btn_emusd = lv_btn_create(h1, btn1);
-	label_btn = lv_label_create(btn_emusd, NULL);
-	lv_label_set_text(label_btn, SYMBOL_MODULES_ALT " emuSD");
-	lv_obj_align(btn_emusd, btn1, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 10, 0);
-	lv_btn_set_action(btn_emusd, LV_BTN_ACTION_CLICK, _action_ums_emusd);
-	
+	// Create emuSD button (advanced feature).
+	lv_obj_t *btn_emusd = NULL;
+	if (n_cfg.advanced_features)
+	{
+		btn_emusd = lv_btn_create(h1, btn1);
+		label_btn = lv_label_create(btn_emusd, NULL);
+		lv_label_set_text(label_btn, SYMBOL_MODULES_ALT " emuSD");
+		lv_obj_align(btn_emusd, btn1, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 10, 0);
+		lv_btn_set_action(btn_emusd, LV_BTN_ACTION_CLICK, _action_ums_emusd);
+	}
+
 	// Create Boot Storage UMS button
 	lv_obj_t *btn_boot_strg = lv_btn_create(h1, btn1);
 	label_btn = lv_label_create(btn_boot_strg, NULL);
 	lv_label_set_text(label_btn, boot_storage_get_drive() == DRIVE_SD ? SYMBOL_SD " Boot Drive" : SYMBOL_CHIP " Boot Drive");
-	lv_obj_align(btn_boot_strg, btn_emusd, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 10, 0);
+	lv_obj_align(btn_boot_strg, btn_emusd ? btn_emusd : btn1, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 10, 0);
 	lv_btn_set_action(btn_boot_strg, LV_BTN_ACTION_CLICK, _action_ums_boot_storage);
 	
 	if(!boot_storage_mount()){
@@ -1848,6 +1852,7 @@ static void _create_tab_tools_emmc_sd_usb(lv_theme_t *th, lv_obj_t *parent)
 	// Create Partition SD/eMMC Card button.
 	// TODO: Boot 1 partition option
 	static const char* btn_map[] = {"\222" SYMBOL_SD "  SD", "\222" SYMBOL_CHIP "  eMMC", ""};
+	static const char* btn_map_sd_only[] = {"\222" SYMBOL_SD "  SD", ""};
 
 	lv_obj_t *btnm = lv_btnm_create(h2, NULL);
 	lv_btnm_set_style(btnm, LV_BTNM_STYLE_BG, th->bg);
@@ -1864,7 +1869,7 @@ static void _create_tab_tools_emmc_sd_usb(lv_theme_t *th, lv_obj_t *parent)
 	lv_coord_t font_h = lv_font_get_height(th->btn.rel->text.font);
     lv_obj_set_size(btnm, 400, font_h + 2 * th->btn.rel->body.padding.ver + 2 * th->bg->body.padding.ver);
 	lv_obj_align(btnm, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4 - th->bg->body.padding.ver);
-	lv_btnm_set_map(btnm, btn_map);
+	lv_btnm_set_map(btnm, n_cfg.advanced_features ? btn_map : btn_map_sd_only);
 	lv_btnm_set_action(btnm, _partition_action);
 
 

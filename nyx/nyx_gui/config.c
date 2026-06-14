@@ -251,6 +251,10 @@ int create_nyx_config_entry(bool force_unmount)
 	itoa(n_cfg.bpmp_clock, lbuf, 10);
 	f_puts(lbuf, &fp);
 
+	f_puts("\nadvancedfeatures=", &fp);
+	itoa(n_cfg.advanced_features, lbuf, 10);
+	f_puts(lbuf, &fp);
+
 	f_puts("\n", &fp);
 
 	f_close(&fp);
