@@ -102,7 +102,7 @@ int emmc_init_retry(bool power_cycle)
 	switch (emmc_mode)
 	{
 	case EMMC_INIT_FAIL: // Reset to max.
-		return 1;
+		return 0;
 	case EMMC_1BIT_HS52:
 		bus_width = SDMMC_BUS_WIDTH_1;
 		type = SDHCI_TIMING_MMC_HS52;
@@ -129,7 +129,7 @@ int emmc_init_retry(bool power_cycle)
 	return res;
 }
 
-int emmc_initialize(bool power_cycle)
+bool emmc_initialize(bool power_cycle)
 {
 	// Reset mode in case of previous failure.
 	if (emmc_mode == EMMC_INIT_FAIL)
@@ -138,12 +138,12 @@ int emmc_initialize(bool power_cycle)
 	if (power_cycle)
 		emmc_end();
 
-	int res = emmc_init_retry(false);
+	int res = !emmc_init_retry(false);
 
 	while (true)
 	{
 		if (!res)
-			return 0;
+			return true;
 		else
 		{
 			emmc_errors[EMMC_ERROR_INIT_FAIL]++;
@@ -151,13 +151,13 @@ int emmc_initialize(bool power_cycle)
 			if (emmc_mode == EMMC_INIT_FAIL)
 				break;
 			else
-				res = emmc_init_retry(true);
+				res = !emmc_init_retry(true);
 		}
 	}
 
 	emmc_end();
 
-	return 1;
+	return false;
 }
 
 int emmc_set_partition(u32 partition) { return sdmmc_storage_set_mmc_partition(&emmc_storage, partition); }
@@ -219,7 +219,7 @@ int emmc_part_read(emmc_part_t *part, u32 sector_off, u32 num_sectors, void *buf
 {
 	// The last LBA is inclusive.
 	if (part->lba_start + sector_off > part->lba_end)
-		return 1;
+		return 0;
 
 #ifdef BDK_EMUMMC_ENABLE
 	return emummc_storage_read(part->lba_start + sector_off, num_sectors, buf);
@@ -232,7 +232,7 @@ int emmc_part_write(emmc_part_t *part, u32 sector_off, u32 num_sectors, void *bu
 {
 	// The last LBA is inclusive.
 	if (part->lba_start + sector_off > part->lba_end)
-		return 1;
+		return 0;
 
 #ifdef BDK_EMUMMC_ENABLE
 	return emummc_storage_write(part->lba_start + sector_off, num_sectors, buf);

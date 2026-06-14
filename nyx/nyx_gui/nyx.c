@@ -54,7 +54,7 @@ char *emmcsn_path_impl(char *path, char *sub_dir, char *filename, sdmmc_storage_
 	// Get actual eMMC S/N.
 	if (!storage)
 	{
-		if (emmc_initialize(false))
+		if (!emmc_initialize(false))
 			strcpy(emmc_sn, "00000000");
 		else
 		{
