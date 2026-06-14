@@ -2164,7 +2164,7 @@ static void _create_tab_home(lv_theme_t *th, lv_obj_t *parent)
 	// Set brand label.
 	lv_obj_t *label_brand = lv_label_create(parent, NULL);
 	lv_label_set_recolor(label_brand, true);
-	s_printf(btn_colored_text, "%s%s", text_color, " hockate#");
+	s_printf(btn_colored_text, "%s%s", text_color, " hocate#");
 	lv_label_set_text(label_brand, btn_colored_text);
 	lv_obj_set_pos(label_brand, 50, 48);
 
@@ -2576,7 +2576,7 @@ static void _nyx_main_menu(lv_theme_t * th)
 	// Add all tabs content.
 	char version[32];
 	char rel = (nyx_str->version >> 24) & 0xFF;
-	s_printf(version, "hockate %s%d.%d.%d%c%c",
+	s_printf(version, "hocate %s%d.%d.%d%c%c",
 			 rel ? "v" : "", nyx_str->version & 0xFF, (nyx_str->version >> 8) & 0xFF, (nyx_str->version >> 16) & 0xFF, rel > 'a' ? rel : 0,
 			 (nyx_str->info_ex.rsvd_flags & RSVD_FLAG_DRAM_8GB) ? '*' : 0);
 	lv_obj_t *tab_about = lv_tabview_add_tab(tv, version);
