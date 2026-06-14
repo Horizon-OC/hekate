@@ -167,6 +167,28 @@ int bq24193_get_property(enum BQ24193_reg_prop prop, int *value)
 	return 0;
 }
 
+static u8 bq24193_input_current_to_reg(int ma)
+{
+	if (ma <= 100)  return 0;
+	if (ma <= 150)  return 1;
+	if (ma <= 500)  return 2;
+	if (ma <= 900)  return 3;
+	if (ma <= 1200) return 4;
+	if (ma <= 1500) return 5;
+	if (ma <= 2000) return 6;
+	return 7; // 3000mA max.
+}
+
+void bq24193_set_input_current_limit(int ma)
+{
+	u8 reg = bq24193_get_reg(BQ24193_InputSource);
+
+	reg &= ~BQ24193_INCONFIG_INLIMIT_MASK;
+	reg |= bq24193_input_current_to_reg(ma);
+
+	i2c_send_byte(I2C_1, BQ24193_I2C_ADDR, BQ24193_InputSource, reg);
+}
+
 void bq24193_enable_charger()
 {
 	u8 reg = bq24193_get_reg(BQ24193_PORConfig);

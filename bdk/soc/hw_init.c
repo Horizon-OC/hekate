@@ -480,8 +480,10 @@ void hw_deinit(bool keep_display)
 	// Scale down BPMP clock.
 	bpmp_clk_rate_set(BPMP_CLK_NORMAL);
 
+
 #ifdef BDK_HW_EXTRA_DEINIT
 	// Disable temperature sensor, touchscreen, 5V regulators, Joy-Con and VIC.
+	bq24193_set_input_current_limit(500);
 	vic_end();
 	tmp451_end();
 	fan_set_duty(0);

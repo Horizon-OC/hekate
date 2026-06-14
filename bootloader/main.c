@@ -33,7 +33,7 @@
 #include <libs/fatfs/ff.h>
 #include "storage/emummc.h"
 #include <storage/boot_storage.h>
-
+#include <power/bq24193.h>>
 #include "frontend/fe_tools.h"
 #include "frontend/fe_info.h"
 #include "storage/emusd.h"
@@ -1519,6 +1519,9 @@ void ipl_main()
 
 	// Check if battery is enough.
 	_check_low_battery();
+
+	// Set charger input current limit
+	bq24193_set_input_current_limit(fuse_read_hw_type() == FUSE_NX_HW_TYPE_HOAG ? 900 : 1200);
 
 	// Prep RTC regs for read. Needed for T210B01 R2C.
 	max77620_rtc_prep_read();
