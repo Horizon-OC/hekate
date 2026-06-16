@@ -23,7 +23,7 @@
 #include "../config.h"
 #include <libs/lvgl/lv_themes/lv_theme_hekate.h>
 #include <libs/lvgl/lvgl.h>
-
+#include <libs/lvgl/lv_misc/lv_math.h>
 #define CLOCK_MIN_YEAR 2025
 #define CLOCK_MAX_YEAR (CLOCK_MIN_YEAR + 10)
 #define CLOCK_YEARLIST "2026\n2027\n2028\n2029\n2030\n2031\n2032\n2033\n2034\n2035"
