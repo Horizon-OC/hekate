@@ -1852,7 +1852,7 @@ static void _create_tab_tools_emmc_sd_usb(lv_theme_t *th, lv_obj_t *parent)
 	// Create Partition SD/eMMC Card button.
 	// TODO: Boot 1 partition option
 	static const char* btn_map[] = {"\222" SYMBOL_SD "  SD", "\222" SYMBOL_CHIP "  eMMC", ""};
-	static const char* btn_map_sd_only[] = {"\222" SYMBOL_SD "  Partition SD Card", ""};
+	static const char* btn_map_sd_only[] = {"\222" SYMBOL_SD "  SD", ""};
 
 	lv_obj_t *btnm = lv_btnm_create(h2, NULL);
 	lv_btnm_set_style(btnm, LV_BTNM_STYLE_BG, th->bg);
@@ -1867,14 +1867,7 @@ static void _create_tab_tools_emmc_sd_usb(lv_theme_t *th, lv_obj_t *parent)
 		lv_btnm_set_style(btnm, LV_BTNM_STYLE_BTN_PR, &btn_transp_pr);
 	}
 	lv_coord_t font_h = lv_font_get_height(th->btn.rel->text.font);
-	lv_coord_t btnm_w = 400;
-	if (!n_cfg.advanced_features)
-	{
-		const char *sd_txt = SYMBOL_SD"  Partition SD Card";
-		btnm_w = lv_txt_get_width(sd_txt, strlen(sd_txt), th->btn.rel->text.font, 0, LV_TXT_FLAG_NONE)
-			+ 2 * th->btn.rel->body.padding.hor + 2 * th->bg->body.padding.hor;
-	}
-    lv_obj_set_size(btnm, btnm_w, font_h + 2 * th->btn.rel->body.padding.ver + 2 * th->bg->body.padding.ver);
+    lv_obj_set_size(btnm, 400, font_h + 2 * th->btn.rel->body.padding.ver + 2 * th->bg->body.padding.ver);
 	lv_obj_align(btnm, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4 - th->bg->body.padding.ver);
 	lv_btnm_set_map(btnm, n_cfg.advanced_features ? btn_map : btn_map_sd_only);
 	lv_btnm_set_action(btnm, _partition_action);
