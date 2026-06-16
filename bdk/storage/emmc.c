@@ -291,7 +291,7 @@ bool emmc_mount()
 		else
 		{
 			gfx_con.mute = false;
-			EPRINTFARGS("Failed to mount eMMC (FatFS Error %d).\nMake sure that a FAT partition exists..", res);
+			// EPRINTFARGS("Failed to mount eMMC (FatFS Error %d).\nMake sure that a FAT partition exists..", res);
 		}
 	}
 
