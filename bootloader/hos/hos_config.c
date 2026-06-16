@@ -182,17 +182,6 @@ static int _config_stock(launch_ctxt_t *ctxt, const char *value)
 	return 0;
 }
 
-static int _config_ofw(launch_ctxt_t *ctxt, const char *value)
-{
-	if (*value == '1')
-	{
-		power_set_state(REBOOT_BYPASS_FUSES);
-		while (true)
-			bpmp_halt();
-	}
-	return 0;
-}
-
 static int _config_emummc_forced(launch_ctxt_t *ctxt, const char *value)
 {
 	if (*value == '1')
@@ -323,7 +312,6 @@ typedef struct _cfg_handler_t
 
 static const cfg_handler_t _config_handlers[] = {
 	{ "stock",            _config_stock },
-	{ "ofw",              _config_ofw },
 	{ "warmboot",         _config_warmboot },
 	{ "secmon",           _config_secmon },
 	{ "kernel",           _config_kernel },

@@ -714,20 +714,7 @@ void hos_launch(ini_sec_t *cfg)
 	list_init(&ctxt.kip1_list);
 
 	ctxt.cfg = cfg;
-	if (cfg) {
-		LIST_FOREACH_ENTRY(ini_kv_t, kv, &cfg->kvs, link)
-		{
-			if (!strcmp("ofw", kv->key) && kv->val[0] == '1')
-			{
-				gfx_con.mute = false;
-				gfx_clear_grey(0x1B);
-				gfx_con_setpos(0, 0);
-				msleep(1000);
 
-				power_set_state(REBOOT_BYPASS_FUSES);
-			}
-		}
-	}
 	if (!gfx_con.mute)
 		gfx_clear_grey(0x1B);
 	gfx_con_setpos(0, 0);

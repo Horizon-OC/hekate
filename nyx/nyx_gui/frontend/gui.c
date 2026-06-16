@@ -1581,19 +1581,6 @@ static void _update_fps(void *params)
 	_fps_frames = 0;
 }
 
-static void _update_clocks(void *params)
-{
-	u32 bpmp_khz = clock_get_dev_freq(CLK_PTO_SCLK);
-	u32 emc_khz  = clock_get_dev_freq(CLK_PTO_EMC);
-
-	char label[48];
-	s_printf(label, "BPMP: %d.%d MHz\nRAM:  %d.%d MHz",
-		bpmp_khz / 1000, (bpmp_khz % 1000) / 100,
-		emc_khz / 1000, (emc_khz % 1000) / 100);
-	lv_label_set_text(status_bar.clocks, label);
-	lv_obj_realign(status_bar.clocks);
-}
-
 static lv_res_t _create_mbox_payloads(lv_obj_t *btn)
 {
 	lv_obj_t *dark_bg = lv_obj_create(lv_scr_act(), NULL);
@@ -2383,18 +2370,6 @@ static void _create_status_bar(lv_theme_t * th)
 	status_bar.fps = lbl_fps;
 
 
-	lbl_left = lv_label_create(status_bar_bg, NULL);
-	lv_label_set_text(lbl_left, " "SYMBOL_DOT);
-	lv_obj_align(lbl_left, lbl_fps, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 8, 0);
-	status_bar.clocks_symbol = lbl_left;
-
-	lv_obj_t *lbl_clocks = lv_label_create(status_bar_bg, NULL);
-	lv_obj_set_style(lbl_clocks, &hint_small_style_white);
-	lv_label_set_text(lbl_clocks, " BPMP: ----.- MHz\nRAM:  ----.- MHz");
-	lv_obj_align(lbl_clocks, lbl_left, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 6, 0);
-	status_bar.clocks = lbl_clocks;
-
-
 	// Middle button.
 	//! TODO: Utilize it for more.
 	lv_obj_t *btn_mid = lv_btn_create(status_bar_bg, NULL);
@@ -2449,22 +2424,16 @@ void nyx_check_ini_changes()
 
 static lv_res_t _show_hide_save_button(lv_obj_t *tv, uint16_t tab_idx)
 {
-	if (tab_idx == 5) // Options.
+	if (tab_idx == 4) // Options.
 	{
 		lv_btn_set_action(status_bar.mid, LV_BTN_ACTION_CLICK, _save_options_action);
 		lv_obj_set_opa_scale(status_bar.mid, LV_OPA_COVER);
 		lv_obj_set_click(status_bar.mid, true);
-
-		lv_obj_set_hidden(status_bar.clocks, true);
-		lv_obj_set_hidden(status_bar.clocks_symbol, true);
 	}
 	else
 	{
 		lv_obj_set_opa_scale(status_bar.mid, LV_OPA_0);
 		lv_obj_set_click(status_bar.mid, false);
-
-		lv_obj_set_hidden(status_bar.clocks, false);
-		lv_obj_set_hidden(status_bar.clocks_symbol, false);
 	}
 
 	nyx_check_ini_changes();
@@ -2648,8 +2617,6 @@ static void _nyx_main_menu(lv_theme_t * th)
 	lv_task_ready(system_tasks.task.status_bar);
 
 	lv_task_create(_update_fps, 1000, LV_TASK_PRIO_LOW, NULL);
-
-	lv_task_create(_update_clocks, 1000, LV_TASK_PRIO_LOW, NULL);
 
 	lv_task_create(_check_sd_card_removed, 2000, LV_TASK_PRIO_LOWEST, NULL);
 

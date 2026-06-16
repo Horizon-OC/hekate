@@ -354,21 +354,6 @@ static lv_res_t _entries_columns_action(lv_obj_t *btn)
 	return LV_RES_OK;
 }
 
-static lv_res_t _advanced_features_action(lv_obj_t *btn)
-{
-	n_cfg.advanced_features = !n_cfg.advanced_features;
-	nyx_changes_made = true;
-
-	if (!n_cfg.advanced_features)
-		lv_btn_set_state(btn, LV_BTN_STATE_REL);
-	else
-		lv_btn_set_state(btn, LV_BTN_STATE_TGL_REL);
-
-	nyx_generic_onoff_toggle(btn);
-
-	return LV_RES_OK;
-}
-
 static lv_res_t _save_nyx_options_action(lv_obj_t *btn)
 {
 	static const char * mbox_btn_map[] = {"\251", "\222OK!", "\251", ""};
@@ -1490,10 +1475,6 @@ static lv_res_t _action_win_nyx_options_close(lv_obj_t *btn)
 	lv_obj_set_opa_scale(status_bar.mid, LV_OPA_0);
 	lv_obj_set_click(status_bar.mid, false);
 
-	// Restore status bar clock labels.
-	lv_obj_set_hidden(status_bar.clocks, false);
-	lv_obj_set_hidden(status_bar.clocks_symbol, false);
-
 	lv_res_t res = nyx_win_close_action(btn);
 
 	_check_nyx_changes();
@@ -1620,10 +1601,6 @@ lv_res_t create_win_nyx_options(lv_obj_t *parrent_btn)
 
 	lv_obj_t *win = nyx_create_standard_window(SYMBOL_HOME" Nyx Settings", _action_win_nyx_options_close);
 
-	// Hide status bar clock labels while in Nyx Settings.
-	lv_obj_set_hidden(status_bar.clocks, true);
-	lv_obj_set_hidden(status_bar.clocks_symbol, true);
-
 	lv_win_add_btn(win, NULL, SYMBOL_KEY" Password", _action_win_nyx_options_passwd);
 
 	static lv_style_t h_style;
@@ -1719,17 +1696,11 @@ lv_res_t create_win_nyx_options(lv_obj_t *parrent_btn)
 	label_txt2 = lv_label_create(sw_h2, NULL);
 	lv_label_set_recolor(label_txt2, true);
 	lv_label_set_static_text(label_txt2,
-		"Sets the boot entries per line to 5. (Default is 4)\n\n");
+		"Sets the boot entries per line to 5. (Default is 4)\n"
+		"#C7EA46 This allows a total of 10 boot entries to be shown in Launch#\n"
+		"#C7EA46 and More Configs sections.#\n\n\n");
 	lv_obj_set_style(label_txt2, &hint_small_style);
 	lv_obj_align(label_txt2, btn2, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 12);
-
-	// Create advanced features toggle.
-	lv_obj_t *btn_adv = lv_btn_create(sw_h2, NULL);
-	nyx_create_onoff_button(th, sw_h2, btn_adv, SYMBOL_SETTINGS" Enable Advanced Features", _advanced_features_action, true);
-	lv_obj_align(btn_adv, label_txt2, LV_ALIGN_OUT_BOTTOM_LEFT, -LV_DPI / 4, LV_DPI / 10);
-	if (n_cfg.advanced_features)
-		lv_btn_set_state(btn_adv, LV_BTN_STATE_TGL_REL);
-	nyx_generic_onoff_toggle(btn_adv);
 
 	// Create the second column.
 	label_sep = lv_label_create(sw_h3, NULL);
