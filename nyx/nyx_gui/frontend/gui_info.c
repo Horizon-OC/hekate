@@ -23,7 +23,6 @@
 #include "../hos/hos.h"
 #include "../hos/pkg1.h"
 #include <libs/fatfs/ff.h>
-#include <storage/boot_storage.h>
 
 #include <stdlib.h>
 
@@ -75,15 +74,15 @@ static lv_res_t _cal0_dump_window_action(lv_obj_t *btns, const char * txt)
 
 	if (btn_idx == 1)
 	{
-		int error = !boot_storage_mount();
+		int error = sd_mount();
 
 		if (!error)
 		{
 			char path[64];
 			emmcsn_path_impl(path, "/dumps", "cal0.bin", NULL);
-			error = boot_storage_save_to_file((u8 *)cal0_buf, SZ_32K, path);
+			error = sd_save_to_file((u8 *)cal0_buf, SZ_32K, path);
 
-			boot_storage_unmount();
+			sd_unmount();
 		}
 
 		_create_window_dump_done(error, "cal0.bin");
@@ -95,7 +94,7 @@ static lv_res_t _cal0_dump_window_action(lv_obj_t *btns, const char * txt)
 
 static lv_res_t _battery_dump_window_action(lv_obj_t * btn)
 {
-	int error = !boot_storage_mount();
+	int error = sd_mount();
 
 	if (!error)
 	{
@@ -105,9 +104,9 @@ static lv_res_t _battery_dump_window_action(lv_obj_t * btn)
 		max17050_dump_regs(buf);
 
 		emmcsn_path_impl(path, "/dumps", "fuel_gauge.bin", NULL);
-		error = boot_storage_save_to_file((u8 *)buf, 0x200, path);
+		error = sd_save_to_file((u8 *)buf, 0x200, path);
 
-		boot_storage_unmount();
+		sd_unmount();
 	}
 
 	_create_window_dump_done(error, "fuel_gauge.bin");
@@ -119,7 +118,7 @@ static lv_res_t _bootrom_dump_window_action(lv_obj_t * btn)
 {
 	static const u32 BOOTROM_SIZE = 0x18000;
 
-	int error = !boot_storage_mount();
+	int error = sd_mount();
 	if (!error)
 	{
 		char path[64];
@@ -129,13 +128,13 @@ static lv_res_t _bootrom_dump_window_action(lv_obj_t * btn)
 		if (!error)
 		{
 			emmcsn_path_impl(path, "/dumps", "evp_thunks.bin", NULL);
-			error = boot_storage_save_to_file((u8 *)iram_evp_thunks, iram_evp_thunks_len, path);
+			error = sd_save_to_file((u8 *)iram_evp_thunks, iram_evp_thunks_len, path);
 		}
 		else
 			error = 255;
 
 		emmcsn_path_impl(path, "/dumps", "bootrom_patched.bin", NULL);
-		int res = boot_storage_save_to_file((u8 *)IROM_BASE, BOOTROM_SIZE, path);
+		int res = sd_save_to_file((u8 *)IROM_BASE, BOOTROM_SIZE, path);
 		if (!error)
 			error = res;
 
@@ -144,13 +143,13 @@ static lv_res_t _bootrom_dump_window_action(lv_obj_t * btn)
 		memset((void*)IPATCH_BASE, 0, sizeof(ipatch_cam)); // Zeroing valid entries is enough but zero everything.
 
 		emmcsn_path_impl(path, "/dumps", "bootrom_unpatched.bin", NULL);
-		res = boot_storage_save_to_file((u8 *)IROM_BASE, BOOTROM_SIZE, path);
+		res = sd_save_to_file((u8 *)IROM_BASE, BOOTROM_SIZE, path);
 		if (!error)
 			error = res;
 
 		memcpy((void*)IPATCH_BASE, ipatch_cam, sizeof(ipatch_cam));
 
-		boot_storage_unmount();
+		sd_unmount();
 	}
 	_create_window_dump_done(error, "evp_thunks.bin, bootrom_patched.bin, bootrom_unpatched.bin");
 
@@ -180,14 +179,14 @@ static void _unlock_reserved_odm_fuses(bool lock)
 
 static lv_res_t _fuse_dump_window_action(lv_obj_t * btn)
 {
-	int error = !boot_storage_mount();
+	int error = sd_mount();
 	if (!error)
 	{
 		char path[128];
 		if (!h_cfg.t210b01)
 		{
 			emmcsn_path_impl(path, "/dumps", "fuse_cached_t210.bin", NULL);
-			error = boot_storage_save_to_file((u8 *)0x7000F900, 0x300, path);
+			error = sd_save_to_file((u8 *)0x7000F900, 0x300, path);
 			emmcsn_path_impl(path, "/dumps", "fuse_array_raw_t210.bin", NULL);
 		}
 		else
@@ -196,10 +195,10 @@ static lv_res_t _fuse_dump_window_action(lv_obj_t * btn)
 			_unlock_reserved_odm_fuses(false);
 
 			emmcsn_path_impl(path, "/dumps", "fuse_cached_t210b01_x898.bin", NULL);
-			error = boot_storage_save_to_file((u8 *)0x7000F898, 0x68, path);
+			error = sd_save_to_file((u8 *)0x7000F898, 0x68, path);
 			emmcsn_path_impl(path, "/dumps", "fuse_cached_t210b01_x900.bin", NULL);
 			if (!error)
-				error = boot_storage_save_to_file((u8 *)0x7000F900, 0x300, path);
+				error = sd_save_to_file((u8 *)0x7000F900, 0x300, path);
 			emmcsn_path_impl(path, "/dumps", "fuse_array_raw_t210b01.bin", NULL);
 		}
 
@@ -207,14 +206,14 @@ static lv_res_t _fuse_dump_window_action(lv_obj_t * btn)
 		{
 			u32 words[FUSE_ARRAY_WORDS_NUM_B01];
 			u32 array_size = fuse_read_array(words);
-			error = boot_storage_save_to_file((u8 *)words, array_size * sizeof(u32), path);
+			error = sd_save_to_file((u8 *)words, array_size * sizeof(u32), path);
 		}
 
 		// Relock.
 		if (h_cfg.t210b01)
 			_unlock_reserved_odm_fuses(true);
 
-		boot_storage_unmount();
+		sd_unmount();
 	}
 
 	if (!h_cfg.t210b01)
@@ -231,15 +230,15 @@ static lv_res_t _kfuse_dump_window_action(lv_obj_t * btn)
 	int error = kfuse_read(buf);
 
 	if (!error)
-		error = !boot_storage_mount();
+		error = sd_mount();
 
 	if (!error)
 	{
 		char path[64];
 		emmcsn_path_impl(path, "/dumps", "kfuses.bin", NULL);
-		error = boot_storage_save_to_file((u8 *)buf, KFUSE_NUM_WORDS * 4, path);
+		error = sd_save_to_file((u8 *)buf, KFUSE_NUM_WORDS * 4, path);
 
-		boot_storage_unmount();
+		sd_unmount();
 	}
 
 	_create_window_dump_done(error, "kfuses.bin");
@@ -269,7 +268,7 @@ static lv_res_t _create_mbox_cal0(lv_obj_t *btn)
 	lv_label_set_style(lb_desc, &monospace_text);
 	lv_obj_set_width(lb_desc, LV_HOR_RES / 9 * 4);
 
-	boot_storage_mount();
+	sd_mount();
 
 	// Dump CAL0.
 	int cal0_res = hos_dump_cal0();
@@ -369,7 +368,7 @@ static lv_res_t _create_mbox_cal0(lv_obj_t *btn)
 
 out:
 	free(txt_buf);
-	boot_storage_unmount();
+	sd_unmount();
 
 	lv_mbox_add_btns(mbox, mbox_btn_map, _cal0_dump_window_action);
 
@@ -1103,78 +1102,6 @@ static lv_res_t _create_window_hw_info_status(lv_obj_t *btn)
 
 	switch (display_id)
 	{
-	case PANEL_RR_SUPER5_OLED_V1:
-		strcat(txt_buf, "RR SUPER5 OLED");
-		switch (display_rev)
-		{
-		case 0x01:
-			strcat(txt_buf, "-V1");
-			break;
-		default:
-			strcat(txt_buf, " #FFDD00 Contact me!#");
-			break;
-		}
-		break;
-	case PANEL_RR_SUPER5_OLED_HD_V1:
-		strcat(txt_buf, "RR SUPER5 OLED HD");
-		switch (display_rev)
-		{
-		case 0x01:
-			strcat(txt_buf, "-V1");
-			break;
-		default:
-			strcat(txt_buf, " #FFDD00 Contact me!#");
-			break;
-		}
-		break;
-	case PANEL_RR_SUPER7_IPS_V1:
-		strcat(txt_buf, "RR SUPER7 IPS");
-		switch (display_rev)
-		{
-		case 0x01:
-			strcat(txt_buf, "-V1");
-			break;
-		default:
-			strcat(txt_buf, " #FFDD00 Contact me!#");
-			break;
-		}
-		break;
-	case PANEL_RR_SUPER7_IPS_HD_V1:
-		strcat(txt_buf, "RR SUPER7 IPS HD");
-		switch (display_rev)
-		{
-		case 0x01:
-			strcat(txt_buf, "-V1");
-			break;
-		default:
-			strcat(txt_buf, " #FFDD00 Contact me!#");
-			break;
-		}
-		break;
-	case PANEL_RR_SUPER7_OLED_7V1:
-		strcat(txt_buf, "RR SUPER7 OLED");
-		switch (display_rev)
-		{
-		case 0x01:
-			strcat(txt_buf, "-V1");
-			break;
-		default:
-			strcat(txt_buf, " #FFDD00 Contact me!#");
-			break;
-		}
-		break;
-	case PANEL_RR_SUPER7_OLED_HD_7V1:
-		strcat(txt_buf, "RR SUPER7 OLED HD");
-		switch (display_rev)
-		{
-		case 0x01:
-			strcat(txt_buf, "-V1");
-			break;
-		default:
-			strcat(txt_buf, " #FFDD00 Contact me!#");
-			break;
-		}
-		break;
 	case PANEL_JDI_LAM062M109A:
 		strcat(txt_buf, "JDI LAM062M109A");
 		break;
@@ -1557,7 +1484,7 @@ static lv_res_t _create_mbox_emmc_sandisk_report(lv_obj_t * btn)
 	lv_obj_align(lb_desc2, lb_desc, LV_ALIGN_OUT_RIGHT_TOP, 0, 0);
 
 
-	if (!emmc_initialize(false))
+	if (emmc_initialize(false))
 	{
 		lv_label_set_text(lb_desc, "#FFDD00 Failed to init eMMC!#");
 
@@ -1567,7 +1494,7 @@ static lv_res_t _create_mbox_emmc_sandisk_report(lv_obj_t * btn)
 	int res = sdmmc_storage_vendor_sandisk_report(&emmc_storage, buf);
 	emmc_end();
 
-	if (!res)
+	if (res)
 	{
 		lv_label_set_text(lb_desc, "#FFDD00 Device Report not supported!#");
 		lv_label_set_text(lb_desc2, " ");
@@ -1751,12 +1678,12 @@ static lv_res_t _create_mbox_benchmark(bool sd_bench)
 
 		// Re-initialize to update trimmers.
 		sd_end();
-		res = !sd_mount();
+		res = sd_mount();
 	}
 	else
 	{
 		storage = &emmc_storage;
-		res = !emmc_initialize(false);
+		res = emmc_initialize(false);
 		if (!res)
 			emmc_set_partition(EMMC_GPP);
 	}
@@ -1820,7 +1747,7 @@ static lv_res_t _create_mbox_benchmark(bool sd_bench)
 		while (data_remaining)
 		{
 			u32 time_taken = get_tmr_us();
-			error = !sdmmc_storage_read(storage, sector_off + lba_curr, sector_num, (u8 *)MIXD_BUF_ALIGNED);
+			error = sdmmc_storage_read(storage, sector_off + lba_curr, sector_num, (u8 *)MIXD_BUF_ALIGNED);
 			time_taken = get_tmr_us() - time_taken;
 			timer += time_taken;
 
@@ -1867,7 +1794,7 @@ static lv_res_t _create_mbox_benchmark(bool sd_bench)
 		while (data_remaining)
 		{
 			u32 time_taken = get_tmr_us();
-			error = !sdmmc_storage_read(storage, sector_off + lba_curr, sector_num, (u8 *)MIXD_BUF_ALIGNED);
+			error = sdmmc_storage_read(storage, sector_off + lba_curr, sector_num, (u8 *)MIXD_BUF_ALIGNED);
 			time_taken = get_tmr_us() - time_taken;
 
 			timer += time_taken;
@@ -1942,7 +1869,7 @@ static lv_res_t _create_mbox_benchmark(bool sd_bench)
 		while (data_remaining)
 		{
 			u32 time_taken = get_tmr_us();
-			error = !sdmmc_storage_read(storage, sector_off + random_offsets[lba_idx], sector_num, (u8 *)MIXD_BUF_ALIGNED);
+			error = sdmmc_storage_read(storage, sector_off + random_offsets[lba_idx], sector_num, (u8 *)MIXD_BUF_ALIGNED);
 			time_taken = get_tmr_us() - time_taken;
 
 			timer += time_taken;
@@ -2078,7 +2005,7 @@ static lv_res_t _create_window_emmc_info_status(lv_obj_t *btn)
 	txt_buf[1] = 0;
 	u16 *emmc_errors;
 
-	if (!emmc_initialize(false))
+	if (emmc_initialize(false))
 	{
 		lv_label_set_text(lb_desc, "#FFDD00 Failed to init eMMC!#");
 		lv_obj_set_width(lb_desc, lv_obj_get_width(desc));
@@ -2110,9 +2037,6 @@ static lv_res_t _create_window_emmc_info_status(lv_obj_t *btn)
 	case 0x45: // Unofficial.
 		strcat(txt_buf, "SanDisk ");
 		lv_win_add_btn(win, NULL, SYMBOL_FILE_ALT" Device Report", _create_mbox_emmc_sandisk_report);
-		break;
-	case 0x70: // Unofficial.
-		strcat(txt_buf, "Kingston ");
 		break;
 	case 0x89: // Unofficial.
 		strcat(txt_buf, "Silicon Motion ");
@@ -2370,7 +2294,7 @@ static lv_res_t _create_window_sdcard_info_status(lv_obj_t *btn)
 
 	manual_system_maintenance(true);
 
-	if (!sd_mount())
+	if (sd_mount())
 	{
 		lv_label_set_text(lb_desc, "#FFDD00 Failed to init SD!#");
 		goto failed;
@@ -3015,7 +2939,7 @@ static bool _lockpick_exists_check()
 
 	bool found = false;
 	void *buf = malloc(0x200);
-	if (boot_storage_mount())
+	if (!sd_mount())
 	{
 		FIL fp;
 		if (f_open(&fp, "bootloader/payloads/Lockpick_RCM.bin", FA_READ))
@@ -3040,7 +2964,7 @@ static bool _lockpick_exists_check()
 
 out:
 	free(buf);
-	boot_storage_unmount();
+	sd_unmount();
 
 	return found;
 }

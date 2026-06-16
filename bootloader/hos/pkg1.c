@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <storage/boot_storage.h>
-#include "../storage/emusd.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -28,8 +26,6 @@
 #include "pkg1.h"
 #include "../config.h"
 #include <libs/compr/lz4.h>
-
-extern hekate_config h_cfg;
 
 // Secmon package2 signature/hash checks patches for Erista.
 #define SM_100_ADR 0x4002B020 // Original: 0x40014020.
@@ -286,7 +282,7 @@ void pkg1_secmon_patch(void *hos_ctxt, u32 secmon_base, bool t210b01)
 	else if (t210b01)
 	{
 		// For T210B01 we patch 6.X.X as is. Otherwise we decompress the program payload.
-		if (ctxt->pkg1_id->mkey == HOS_MKEY_VER_600)
+		if (ctxt->pkg1_id->mkey      == HOS_MKEY_VER_600)
 			secmon_patchset = _secmon_6_mariko_patchset;
 		else if (ctxt->pkg1_id->mkey == HOS_MKEY_VER_620)
 			secmon_patchset = _secmon_620_mariko_patchset;
@@ -346,18 +342,6 @@ void pkg1_warmboot_patch(void *hos_ctxt)
 		*(vu32 *)(ctxt->pkg1_id->warmboot_base + warmboot_patchset[i].off) = warmboot_patchset[i].val;
 }
 
-static void _warmboot_filename(char *out, u32 fuses)
-{
-	if (fuses < 16)
-	{
-		out[25] = '0';
-		itoa(fuses, &out[25 + 1], 16);
-	}
-	else
-		itoa(fuses, &out[25], 16);
-	strcat(out, ".bin");
-}
-
 int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mkey)
 {
 	launch_ctxt_t *ctxt = (launch_ctxt_t *)hos_ctxt;
@@ -365,78 +349,48 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 
 	if (h_cfg.t210b01)
 	{
-		u32 fuses_max = 32; // Current ODM7 max.
 		u8  burnt_fuses = bit_count(fuse_read_odm(7));
 
-		// Save current warmboot in storage cache (MWS) and check if another one is needed.
+		// Check if not overridden.
 		if (!ctxt->warmboot)
 		{
-			char path[128];
-			strcpy(path, "emusd:warmboot_mariko/wb_");
-			_warmboot_filename(path, fuses_fw);
+			char path[32];
+			strcpy(path, "warmboot_mariko/wb_00.bin");
+			itoa(fuses_fw, &path[19 + (fuses_fw < 0x10 ? 1 : 0)], 16);
+			path[21] = '.';
 
-			// Check if warmboot fw exists and save it.
+			//!OBSOLETE: Check if warmboot fw does not exist and save it.
 			if (ctxt->warmboot_size && warmboot_base && f_stat(path, NULL))
 			{
-				f_mkdir("emusd:warmboot_mariko");
+				f_mkdir("warmboot_mariko");
 				sd_save_to_file((void *)warmboot_base, ctxt->warmboot_size, path);
 			}
 
-			// Load warmboot fw from storage if burnt fuses are higher than firmware's.
+			// Load sc7exit-fw from storage if low.
 			if (burnt_fuses > fuses_fw)
 			{
-				if (fuses_fw == 0)
-				{
-					// L4T path (fuses_fw=0 sentinel): load sc7exit_b01.bin as upstream does.
-					void *warmboot_fw = sd_file_read("bootloader/sys/l4t/sc7exit_b01.bin", &ctxt->warmboot_size);
-					if (!warmboot_fw)
-					{
-						res = 1;
-					}
-					else
-					{
-						fuses_fw = *(u32 *)warmboot_fw;
-						if (burnt_fuses > fuses_fw)
-							res = 1;
-						else
-						{
-							ctxt->warmboot      = warmboot_fw + sizeof(u32);
-							ctxt->warmboot_size -= sizeof(u32) * 2;
-							burnt_fuses          = fuses_fw;
-						}
-					}
-				}
+				//!TODO: Update on fuse burns.
+				void *warmboot_fw = sd_file_read("bootloader/sys/l4t/sc7exit_b01.bin", &ctxt->warmboot_size);
+				fuses_fw = *(u32 *)warmboot_fw;
+
+				// Check if high enough.
+				if (!warmboot_fw || burnt_fuses > fuses_fw)
+					res = 1;
 				else
 				{
-					// HOS path: scan emuSD MWS cache for a matching warmboot fw.
-					u32 tmp_fuses = burnt_fuses;
-					while (true)
-					{
-						_warmboot_filename(path, tmp_fuses);
-						if (!f_stat(path, NULL))
-						{
-							ctxt->warmboot = emusd_file_read(path + 6, &ctxt->warmboot_size);
-							burnt_fuses = tmp_fuses;
-							break;
-						}
-						if (tmp_fuses >= fuses_max)
-							break;
-						tmp_fuses++;
-					}
-
-					// Check if proper warmboot firmware was not found.
-					if (!ctxt->warmboot)
-						res = 1;
+					ctxt->warmboot = warmboot_fw + sizeof(u32);
+					ctxt->warmboot_size -= sizeof(u32) * 2;
+					burnt_fuses = fuses_fw;
 				}
 			}
 			else // Replace burnt fuses with higher count.
 				burnt_fuses = fuses_fw;
 		}
 
-		// Configure Warmboot parameters. Anything lower than 6.0.0 is not supported.
-		// From 7.0.0 and up, PA id is 0x21 * fuses. Below 9, subtract 0x60 for old method.
+		// Configure warmboot parameters. Anything lower than 6.0.0 is not supported.
+		// From 7.0.0 and up, it's not derived from PA segment but it's 0x21 * fuses.
 		u32 pa_id = 0x21 * burnt_fuses;
-		if (burnt_fuses <= 8)
+		if (burnt_fuses <= 8) // Old method.
 			pa_id -= 0x60;
 
 		// Set Warmboot Physical Address ID and lock SECURE_SCRATCH32 register.
@@ -445,15 +399,16 @@ int pkg1_warmboot_config(void *hos_ctxt, u32 warmboot_base, u32 fuses_fw, u8 mke
 	}
 	else
 	{
-		// Set warmboot address in PMC if required.
+		// Set Warmboot address in PMC if required.
 		if (mkey <= HOS_MKEY_VER_301)
 			PMC(APBDEV_PMC_SCRATCH1) = warmboot_base;
 
-		// Set Warmboot Physical Address ID for 3.0.0 - 3.0.2.
+		// Set Warmboot Physical Address ID for 3.0.0 - 3.0.2. For 4.0.0 and up, secmon does it.
+		// The check is already patched so it's actually irrelevant.
 		if (mkey == HOS_MKEY_VER_300)
-			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0xE3;  // Warmboot 3.0.0 PA address id.
+			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0xE3;  // Warmboot 3.0.0 PA ID.
 		else if (mkey == HOS_MKEY_VER_301)
-			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0x104; // Warmboot 3.0.1/.2 PA address id.
+			PMC(APBDEV_PMC_SECURE_SCRATCH32) = 0x104; // Warmboot 3.0.1/.2 PA ID.
 	}
 
 	return res;

@@ -168,7 +168,7 @@
 */
 
 
-#define FF_FS_RPATH		2
+#define FF_FS_RPATH		0
 /* This option configures support for relative path.
 /
 /   0: Disable relative path and remove related functions.
@@ -181,12 +181,12 @@
 / Drive/Volume Configurations
 /---------------------------------------------------------------------------*/
 
-#define FF_VOLUMES		5
+#define FF_VOLUMES		1
 /* Number of volumes (logical drives) to be used. (1-10) */
 
 
-#define FF_STR_VOLUME_ID	1
-#define FF_VOLUME_STRS		"sd", "boot1", "boot1_1mb", "emmc", "emusd"
+#define FF_STR_VOLUME_ID	0
+#define FF_VOLUME_STRS		"sd"
 /* FF_STR_VOLUME_ID switches support for volume ID in arbitrary strings.
 /  When FF_STR_VOLUME_ID is set to 1 or 2, arbitrary strings can be used as drive
 /  number in the path name. FF_VOLUME_STRS defines the volume ID strings for each
@@ -303,12 +303,5 @@
 /  included somewhere in the scope of ff.h. */
 
 
-typedef enum {
-	DRIVE_SD        = 0,
-	DRIVE_BOOT1     = 1,
-	DRIVE_BOOT1_1MB = 2,
-	DRIVE_EMMC      = 3,
-	DRIVE_EMUSD     = 4,
-} DDRIVE;
 
 /*--- End of configuration options ---*/

@@ -14,9 +14,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <storage/emmc.h>
-#include <storage/sd.h>
-#include <storage/sdmmc.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -25,7 +22,6 @@
 #include "emummc.h"
 #include "../config.h"
 #include <libs/fatfs/ff.h>
-#include <storage/emummc_file_based.h>
 
 emummc_cfg_t emu_cfg = { 0 };
 
@@ -80,68 +76,33 @@ bool emummc_set_path(char *path)
 	FIL fp;
 	bool found = false;
 
-	// strcpy(emu_cfg.emummc_file_based_path, "sd:");
-	strcpy(emu_cfg.emummc_file_based_path, "");
-	strcat(emu_cfg.emummc_file_based_path, path);
+	strcpy(emu_cfg.emummc_file_based_path, path);
 	strcat(emu_cfg.emummc_file_based_path, "/raw_based");
 
 	if (!f_open(&fp, emu_cfg.emummc_file_based_path, FA_READ))
 	{
-		if (!f_read(&fp, &emu_cfg.sector, 4, NULL)){
-			if (emu_cfg.sector){
+		if (!f_read(&fp, &emu_cfg.sector, 4, NULL))
+			if (emu_cfg.sector)
 				found = true;
-				emu_cfg.enabled = 1;
-				goto out;
-			}
+	}
+	else
+	{
+		strcpy(emu_cfg.emummc_file_based_path, path);
+		strcat(emu_cfg.emummc_file_based_path, "/file_based");
+
+		if (!f_stat(emu_cfg.emummc_file_based_path, NULL))
+		{
+			emu_cfg.sector = 0;
+			emu_cfg.path = path;
+
+			found = true;
 		}
 	}
-
-	strcpy(emu_cfg.emummc_file_based_path, "");
-	strcat(emu_cfg.emummc_file_based_path, path);
-	strcat(emu_cfg.emummc_file_based_path, "/raw_emmc_based");
-	if (!f_open(&fp, emu_cfg.emummc_file_based_path, FA_READ))
-	{
-		if (!f_read(&fp, &emu_cfg.sector, 4, NULL)){
-			if (emu_cfg.sector){
-				found = true;
-				emu_cfg.enabled = 4;
-				goto out;
-			}
-		}
-	}
-
-	// strcpy(emu_cfg.emummc_file_based_path, "sd:");
-	strcpy(emu_cfg.emummc_file_based_path, "");
-	strcat(emu_cfg.emummc_file_based_path, path);
-	strcat(emu_cfg.emummc_file_based_path, "/file_based");
-	if (!f_stat(emu_cfg.emummc_file_based_path, NULL))
-	{
-		emu_cfg.sector = 0;
-		emu_cfg.path = path;
-		emu_cfg.enabled = 1;
-
-		found = true;
-		goto out;
-	}
-
-	// strcpy(emu_cfg.emummc_file_based_path, "sd:");
-	strcpy(emu_cfg.emummc_file_based_path, "");
-	strcat(emu_cfg.emummc_file_based_path, path);
-	strcat(emu_cfg.emummc_file_based_path, "/file_emmc_based");
-	if (!f_stat(emu_cfg.emummc_file_based_path, NULL))
-	{
-		emu_cfg.sector = 0;
-		emu_cfg.path = path;
-		emu_cfg.enabled = 4;
-
-		found = true;
-		goto out;
-	}
-
-out:
 
 	if (found)
 	{
+		emu_cfg.enabled = 1;
+
 		// Get ID from path.
 		u32 id_from_path = 0;
 		u32 path_size = strlen(path);
@@ -172,135 +133,165 @@ static int emummc_raw_get_part_off(int part_idx)
 
 int emummc_storage_init_mmc()
 {
-	// FILINFO fno;
+	FILINFO fno;
 	emu_cfg.active_part = 0;
 
 	// Always init eMMC even when in emuMMC. eMMC is needed from the emuMMC driver anyway.
-	if (!emmc_initialize(false))
+	if (emmc_initialize(false))
 		return 2;
 
 	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
 		return 0;
 
-	bool file_based = false;
+	if (sd_mount())
+		goto out;
 
-	if(emu_cfg.enabled == 4){
-		// emmc based
-		if(!emu_cfg.sector){
-			// file based
-			if(!emmc_mount()){
-				gfx_printf("emmc mount fail\n");
-				return 1;
-			}
-			strcpy(emu_cfg.emummc_file_based_path, "emmc:");
-			strcat(emu_cfg.emummc_file_based_path, emu_cfg.path);
-			strcat(emu_cfg.emummc_file_based_path, "/eMMC/");
-			file_based = true;
-		}else{
-			// raw based
-			// emmc already initialized
-		}
-	}else{
-		// sd based
-		if(!emu_cfg.sector){
-			// file based
-			if(!sd_mount()){
-				return 1;
-			}
-			strcpy(emu_cfg.emummc_file_based_path, "sd:");
-			strcat(emu_cfg.emummc_file_based_path, emu_cfg.path);
-			strcat(emu_cfg.emummc_file_based_path, "/eMMC/");
-			file_based = true;
-		}else{
-			// raw based
-			if(!sd_initialize(false)){
-				return 1;
-			}
-		}
-	}
+	if (!emu_cfg.sector)
+	{
+		strcpy(emu_cfg.emummc_file_based_path, emu_cfg.path);
+		strcat(emu_cfg.emummc_file_based_path, "/eMMC");
 
-	if(file_based){
-		gfx_printf("file based\n");
-		return emummc_storage_file_based_init(emu_cfg.emummc_file_based_path) == 0;
+		if (f_stat(emu_cfg.emummc_file_based_path, &fno))
+		{
+			EPRINTF("Failed to open eMMC folder.");
+			goto out;
+		}
+		f_chmod(emu_cfg.emummc_file_based_path, AM_ARC, AM_ARC);
+
+		strcat(emu_cfg.emummc_file_based_path, "/00");
+		if (f_stat(emu_cfg.emummc_file_based_path, &fno))
+		{
+			EPRINTF("Failed to open emuMMC rawnand.");
+			goto out;
+		}
+		emu_cfg.file_based_part_size = fno.fsize >> 9;
 	}
 
 	return 0;
+
+out:
+	return 1;
 }
 
 int emummc_storage_end()
 {
-	if(!h_cfg.emummc_force_disable && emu_cfg.enabled && !emu_cfg.sector){
-		emummc_storage_file_based_end();
-	}
-	if(!emu_cfg.enabled || h_cfg.emummc_force_disable || emu_cfg.enabled == 4){
+	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
 		emmc_end();
-	}else{
+	else
 		sd_end();
-	}
 
-	return 1;
+	return 0;
 }
 
 int emummc_storage_read(u32 sector, u32 num_sectors, void *buf)
 {
-	sdmmc_storage_t *storage = emu_cfg.enabled == 4 ? &emmc_storage : &sd_storage;
-	// FIL fp;
+	FIL fp;
 	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
 		return sdmmc_storage_read(&emmc_storage, sector, num_sectors, buf);
 	else if (emu_cfg.sector)
 	{
 		sector += emu_cfg.sector;
 		sector += emummc_raw_get_part_off(emu_cfg.active_part) * 0x2000;
-		return sdmmc_storage_read(storage, sector, num_sectors, buf);
+		return sdmmc_storage_read(&sd_storage, sector, num_sectors, buf);
 	}
 	else
 	{
-		return emummc_storage_file_based_read(sector, num_sectors, buf);
-	}
+		if (!emu_cfg.active_part)
+		{
+			u32 file_part = sector / emu_cfg.file_based_part_size;
+			sector = sector % emu_cfg.file_based_part_size;
+			if (file_part >= 10)
+				itoa(file_part, emu_cfg.emummc_file_based_path + strlen(emu_cfg.emummc_file_based_path) - 2, 10);
+			else
+			{
+				emu_cfg.emummc_file_based_path[strlen(emu_cfg.emummc_file_based_path) - 2] = '0';
+				itoa(file_part, emu_cfg.emummc_file_based_path + strlen(emu_cfg.emummc_file_based_path) - 1, 10);
+			}
+		}
+		if (f_open(&fp, emu_cfg.emummc_file_based_path, FA_READ))
+		{
+			EPRINTF("Failed to open emuMMC image.");
+			return 1;
+		}
+		f_lseek(&fp, (u64)sector << 9);
+		if (f_read(&fp, buf, (u64)num_sectors << 9, NULL))
+		{
+			EPRINTF("Failed to read emuMMC image.");
+			f_close(&fp);
+			return 1;
+		}
 
-	return 1;
+		f_close(&fp);
+		return 0;
+	}
 }
 
 int emummc_storage_write(u32 sector, u32 num_sectors, void *buf)
 {
-	sdmmc_storage_t *storage = emu_cfg.enabled == 4 ? &emmc_storage : &sd_storage;
-	// FIL fp;
+	FIL fp;
 	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
 		return sdmmc_storage_write(&emmc_storage, sector, num_sectors, buf);
 	else if (emu_cfg.sector)
 	{
 		sector += emu_cfg.sector;
 		sector += emummc_raw_get_part_off(emu_cfg.active_part) * 0x2000;
-		return sdmmc_storage_write(storage, sector, num_sectors, buf);
+		return sdmmc_storage_write(&sd_storage, sector, num_sectors, buf);
 	}
 	else
 	{
-		return emummc_storage_file_based_write(sector, num_sectors, buf);
+		if (!emu_cfg.active_part)
+		{
+			u32 file_part = sector / emu_cfg.file_based_part_size;
+			sector = sector % emu_cfg.file_based_part_size;
+			if (file_part >= 10)
+				itoa(file_part, emu_cfg.emummc_file_based_path + strlen(emu_cfg.emummc_file_based_path) - 2, 10);
+			else
+			{
+				emu_cfg.emummc_file_based_path[strlen(emu_cfg.emummc_file_based_path) - 2] = '0';
+				itoa(file_part, emu_cfg.emummc_file_based_path + strlen(emu_cfg.emummc_file_based_path) - 1, 10);
+			}
+		}
+
+		if (f_open(&fp, emu_cfg.emummc_file_based_path, FA_WRITE))
+			return 1;
+
+		f_lseek(&fp, (u64)sector << 9);
+		if (f_write(&fp, buf, (u64)num_sectors << 9, NULL))
+		{
+			f_close(&fp);
+			return 1;
+		}
+
+		f_close(&fp);
+		return 0;
 	}
 }
 
 int emummc_storage_set_mmc_partition(u32 partition)
 {
 	emu_cfg.active_part = partition;
+	emmc_set_partition(partition);
 
-	if(h_cfg.emummc_force_disable || !emu_cfg.enabled){
-		emmc_set_partition(partition);
-		return 1;
+	if (!emu_cfg.enabled || h_cfg.emummc_force_disable || emu_cfg.sector)
+		return 0;
+	else
+	{
+		strcpy(emu_cfg.emummc_file_based_path, emu_cfg.path);
+		strcat(emu_cfg.emummc_file_based_path, "/eMMC");
+
+		switch (partition)
+		{
+		case 0:
+			strcat(emu_cfg.emummc_file_based_path, "/00");
+			break;
+		case 1:
+			strcat(emu_cfg.emummc_file_based_path, "/BOOT0");
+			break;
+		case 2:
+			strcat(emu_cfg.emummc_file_based_path, "/BOOT1");
+			break;
+		}
+
+		return 0;
 	}
-
-	if(!emu_cfg.sector){
-		emummc_storage_file_base_set_partition(partition);
-		return 1;
-	}
-
-	if(emu_cfg.enabled != 4){
-		emmc_set_partition(partition);
-	}else{
-		emmc_set_partition(EMMC_GPP);
-	}
-	return 1;
-}
-
-sdmmc_storage_t *emummc_get_storage(){
-	return emu_cfg.enabled == 4 ? &emmc_storage : &sd_storage;
 }

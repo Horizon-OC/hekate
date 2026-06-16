@@ -15,7 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <storage/boot_storage.h>
 #include <string.h>
 
 #include <mem/heap.h>
@@ -274,7 +273,6 @@ void power_set_state(power_state_t state)
 	u8 reg;
 
 	// Unmount and power down sd card.
-	boot_storage_end();
 	sd_end();
 
 	// De-initialize and power down various hardware.

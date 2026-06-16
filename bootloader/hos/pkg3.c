@@ -16,8 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <storage/boot_storage.h>
-#include "../storage/emusd.h"
 #include <string.h>
 
 #include <bdk.h>
@@ -87,9 +85,9 @@ typedef struct _pkg3_content_t
 static void _pkg3_update_r2p()
 {
 	u32 size = 0;
-	u8 *r2p_payload = emusd_file_read("atmosphere/reboot_payload.bin", &size);
+	u8 *r2p_payload = sd_file_read("atmosphere/reboot_payload.bin", &size);
 
-	is_ipl_updated(r2p_payload, size, "emusd:atmosphere/reboot_payload.bin", h_cfg.updater2p ? true : false);
+	is_ipl_updated(r2p_payload, size, "atmosphere/reboot_payload.bin", h_cfg.updater2p ? true : false);
 
 	free(r2p_payload);
 }
@@ -127,10 +125,6 @@ static int _pkg3_kip1_skip(char ***pkg3_kip1_skip, u32 *pkg3_kip1_skip_num, char
 
 int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
 {
-	char *path1 = (char *)malloc(256);
-	strcpy(path1, "emusd:");
-	strcat(path1, path);
-
 	FIL fp;
 
 	char **pkg3_kip1_skip = NULL;
@@ -158,25 +152,16 @@ int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
 	}
 
 #ifdef HOS_MARIKO_STOCK_SECMON
-	if (stock && emummc_disabled && (pkg1_old || h_cfg.t210b01)) {
-		free(path1);
+	if (stock && emummc_disabled && (pkg1_old || h_cfg.t210b01))
 		return 0;
-	}
-
 #else
-	if (stock && emummc_disabled && pkg1_old) {
-		free(path1);
+	if (stock && emummc_disabled && pkg1_old)
 		return 0;
-	}
-
 #endif
 
 	// Try to open PKG3.
-	if (f_open(&fp, path1, FA_READ) != FR_OK) {
-		free(path1);
+	if (f_open(&fp, path, FA_READ) != FR_OK)
 		return 1;
-	}
-
 
 	void *pkg3 = malloc(f_size(&fp));
 
@@ -282,7 +267,6 @@ int parse_pkg3(launch_ctxt_t *ctxt, const char *path)
 		_pkg3_update_r2p();
 
 		free(pkg3_kip1_skip);
-		free(path1);
 
 		return 0;
 	}

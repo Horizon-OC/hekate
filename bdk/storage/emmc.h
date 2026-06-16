@@ -65,17 +65,12 @@ int  emmc_init_retry(bool power_cycle);
 int  emmc_initialize(bool power_cycle);
 int  emmc_set_partition(u32 partition);
 void emmc_end();
-bool emmc_mount();
-void emmc_unmount();
-bool emmc_get_initialized();
-bool emmc_get_mounted();
 
 void emmc_gpt_parse(link_t *gpt);
 void emmc_gpt_free(link_t *gpt);
 emmc_part_t *emmc_part_find(link_t *gpt, const char *name);
 int  emmc_part_read(emmc_part_t *part, u32 sector_off, u32 num_sectors, void *buf);
 int  emmc_part_write(emmc_part_t *part, u32 sector_off, u32 num_sectors, void *buf);
-sdmmc_storage_t *emmc_part_get_storage();
 
 void nx_emmc_get_autorcm_masks(u8 *mod0, u8 *mod1);
 

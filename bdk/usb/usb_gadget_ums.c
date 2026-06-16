@@ -19,9 +19,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <storage/emmc.h>
-#include <storage/emummc_file_based.h>
-#include <storage/file_based_storage.h>
 #include <string.h>
 
 #include <usb/usbd.h>
@@ -498,18 +495,8 @@ static int _scsi_read(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		}
 
 		// Do the SDMMC read.
-		if(ums->lun.storage){
-			if (!sdmmc_storage_read(ums->lun.storage, ums->lun.offset + lba_offset, amount, sdmmc_buf))
-				amount = 0;
-		}else if (ums->lun.type == MMC_FILE_BASED) {
-			if(!file_based_storage_read(ums->lun.offset + lba_offset, amount, sdmmc_buf)){
-				amount = 0;
-			}
-		}else{
-			if(!emummc_storage_file_based_read(ums->lun.offset + lba_offset, amount, sdmmc_buf)){
-				amount = 0;
-			}
-		}
+		if (sdmmc_storage_read(ums->lun.storage, ums->lun.offset + lba_offset, amount, sdmmc_buf))
+			amount = 0;
 
 		// Wait for the async USB transfer to finish.
 		if (!first_read)
@@ -663,19 +650,9 @@ static int _scsi_write(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 				goto empty_write;
 
 			// Perform the write.
-			if(ums->lun.storage){
-				if (!sdmmc_storage_write(ums->lun.storage, ums->lun.offset + lba_offset,
-					amount >> UMS_DISK_LBA_SHIFT, (u8 *)bulk_ctxt->bulk_out_buf))
-					amount = 0;
-			}else if(ums->lun.type == MMC_FILE_BASED){
-				if(!file_based_storage_write(ums->lun.offset + lba_offset, amount >> UMS_DISK_LBA_SHIFT, (u8*)bulk_ctxt->bulk_out_buf)){
-					amount = 0;
-				}
-			}else{
-				if(!emummc_storage_file_based_write(ums->lun.offset + lba_offset, amount >> UMS_DISK_LBA_SHIFT, (u8*)bulk_ctxt->bulk_out_buf)){
-					amount = 0;
-				}
-			}
+			if (sdmmc_storage_write(ums->lun.storage, ums->lun.offset + lba_offset,
+				amount >> UMS_DISK_LBA_SHIFT, (u8 *)bulk_ctxt->bulk_out_buf))
+				amount = 0;
 
 DPRINTF("file write %X @ %X\n", amount, lba_offset);
 
@@ -745,18 +722,8 @@ static int _scsi_verify(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			break;
 		}
 
-		if(ums->lun.storage){
-			if (!sdmmc_storage_read(ums->lun.storage, ums->lun.offset + lba_offset, amount, bulk_ctxt->bulk_in_buf))
-				amount = 0;
-		}else if(ums->lun.type == MMC_FILE_BASED){
-			if(!file_based_storage_read(ums->lun.offset + lba_offset, amount, bulk_ctxt->bulk_in_buf)){
-				amount = 0;
-			}
-		}else{
-			if(!emummc_storage_file_based_read(ums->lun.offset + lba_offset, amount, bulk_ctxt->bulk_in_buf)){
-				amount = 0;
-			}
-		}
+		if (sdmmc_storage_read(ums->lun.storage, ums->lun.offset + lba_offset, amount, bulk_ctxt->bulk_in_buf))
+			amount = 0;
 
 DPRINTF("File read %X @ %X\n", amount, lba_offset);
 
@@ -789,12 +756,8 @@ static int _scsi_inquiry(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		buf[3] = 20;  // Additional length.
 
 		buf += 4;
-		if(ums->lun.storage){
-			s_printf((char *)buf, "%04X%s",
-				ums->lun.storage->cid.serial, ums->lun.type == MMC_SD ? " SD " : " eMMC ");
-		}else{
-			strcpy((char*)buf, "0000 emuMMC");
-		}
+		s_printf((char *)buf, "%04X%s",
+			ums->lun.storage->cid.serial, ums->lun.type == MMC_SD ? " SD " : " eMMC ");
 
 		switch (ums->lun.partition)
 		{
@@ -1898,7 +1861,7 @@ int usb_device_gadget_ums(usb_ctxt_t *usbs)
 	if (usbs->type == MMC_SD)
 	{
 		sd_end();
-		if (!sd_mount() && !sd_get_card_initialized())
+		if (sd_mount())
 		{
 			ums.set_text(ums.label, "#FFDD00 Failed to init SD!#");
 			res = 1;
@@ -1908,51 +1871,10 @@ int usb_device_gadget_ums(usb_ctxt_t *usbs)
 
 		ums.lun.sdmmc   = &sd_sdmmc;
 		ums.lun.storage = &sd_storage;
-	}else if(usbs->type == MMC_EMUMMC_FILE){
-		// sd must be already mounted and emummc file based initialized
-		if(!sd_get_card_mounted()){
-			ums.set_text(ums.label, "#FFDD00 Failed to init SD!#");
-			res = 1;
-			goto init_fail;
-		}
-		ums.lun.storage = NULL;
-		ums.lun.sdmmc = NULL;
 	}
-	else if(usbs->type == MMC_EMUMMC_RAW_EMMC){
-		if (!emmc_initialize(false))
-		{
-			ums.set_text(ums.label, "#FFDD00 Failed to init eMMC!#");
-			res = 1;
-			goto init_fail;
-		}
-		emmc_set_partition(EMMC_GPP);
-
-		ums.lun.sdmmc   = &emmc_sdmmc;
-		ums.lun.storage = &emmc_storage;
-	}else if(usbs->type == MMC_EMUMMC_RAW_SD){
-		if (!sd_initialize(false))
-		{
-			ums.set_text(ums.label, "#FFDD00 Failed to init SD!#");
-			res = 1;
-			goto init_fail;
-		}
-
-		ums.lun.sdmmc   = &emmc_sdmmc;
-		ums.lun.storage = &emmc_storage;
-	}else if(usbs->type == MMC_EMUMMC_FILE_EMMC){
-		if(!emmc_get_mounted()){
-			ums.set_text(ums.label, "#FFDD00 Failed to init eMMC!#");
-			res = 1;
-			goto init_fail;
-		}
-		ums.lun.storage = NULL;
-		ums.lun.sdmmc = NULL;
-	}else if(usbs->type == MMC_FILE_BASED){
-		// file based must be initialized at this point
-		ums.lun.storage = NULL;
-		ums.lun.sdmmc = NULL;
-	} else{
-		if (!emmc_initialize(false))
+	else
+	{
+		if (emmc_initialize(false))
 		{
 			ums.set_text(ums.label, "#FFDD00 Failed to init eMMC!#");
 			res = 1;
@@ -1980,27 +1902,10 @@ int usb_device_gadget_ums(usb_ctxt_t *usbs)
 	// If partition sectors are not set get them from hardware.
 	if (!ums.lun.num_sectors)
 	{
-		switch(usbs->type){
-		case MMC_EMMC:
-			if(ums.lun.partition - 1){
-				ums.lun.num_sectors = emmc_storage.ext_csd.boot_mult << 8;
-			}else{
-				ums.lun.num_sectors = ums.lun.storage->sec_cnt;
-			}
-			break;
-		case MMC_SD:
-			ums.lun.num_sectors = ums.lun.storage->sec_cnt;
-			break;
-		case MMC_EMUMMC_FILE:
-		case MMC_EMUMMC_FILE_EMMC:
-		case MMC_EMUMMC_RAW_SD:
-		case MMC_EMUMMC_RAW_EMMC:
-			ums.set_text(ums.label, "#FFDD00 No sector count set for emuMMC!#");
-			break;
-		case MMC_FILE_BASED:
-			ums.set_text(ums.label, "#FFDD00 No sector count set for emuSD!#");
-			break;
-		}
+		if (usbs->type == MMC_EMMC && (ums.lun.partition - 1)) // eMMC BOOT0/1.
+			ums.lun.num_sectors = emmc_storage.ext_csd.boot_mult << 8;
+		else
+			ums.lun.num_sectors = ums.lun.storage->sec_cnt;   // eMMC GPP or SD.
 	}
 
 	do

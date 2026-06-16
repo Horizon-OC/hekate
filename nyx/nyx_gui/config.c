@@ -21,7 +21,6 @@
 
 #include "config.h"
 #include <libs/fatfs/ff.h>
-#include <storage/boot_storage.h>
 
 void set_default_configuration()
 {
@@ -188,9 +187,9 @@ int create_config_entry()
 
 int create_nyx_config_entry(bool force_unmount)
 {
-	bool sd_mounted = boot_storage_get_mounted();
+	bool sd_mounted = sd_get_card_mounted();
 
-	if (!boot_storage_mount())
+	if (sd_mount())
 		return 1;
 
 	char lbuf[64];
@@ -256,7 +255,7 @@ int create_nyx_config_entry(bool force_unmount)
 	f_close(&fp);
 
 	if (force_unmount || !sd_mounted)
-		boot_storage_unmount();
+		sd_unmount();
 
 	return 0;
 }

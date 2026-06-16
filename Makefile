@@ -34,9 +34,9 @@ OBJS += bpmp ccplex clock di i2c irq timer \
 		mc sdram minerva smmu \
 		gpio pinmux pmc se tsec uart \
 		fuse kfuse \
-		sdmmc sdmmc_driver emmc sd emummc emummc_file_based emusd \
+		sdmmc sdmmc_driver emmc sd emummc \
 		bq24193 max17050 max7762x max77620-rtc \
-		hw_init boot_storage file_based_storage
+		hw_init
 
 # Utilities.
 OBJS += btn dirlist ianos ini util config
