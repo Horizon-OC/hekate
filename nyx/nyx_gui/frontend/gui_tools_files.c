@@ -377,7 +377,7 @@ static bool _fm_is_text(const char *name)
 
 static bool _fm_write_file(const char *path, const char *txt)
 {
-	if (!sd_mount())
+	if (sd_mount())
 		return false;
 
 	FIL *fp = malloc(sizeof(FIL));
@@ -508,7 +508,7 @@ static lv_res_t _fm_view_close(lv_obj_t *btn)
 
 static void _fm_view_text(void)
 {
-	if (!sd_mount())
+	if (sd_mount())
 	{
 		_fm_msg("#FFDD00 Failed to init SD!#");
 		return;
@@ -702,7 +702,7 @@ static void _fm_refresh(void)
 	}
 	fm_entry_count = 0;
 
-	if (!sd_mount())
+	if (sd_mount())
 	{
 		lv_label_set_text(fm.path_lbl, "#FFDD00 Failed to init SD!#");
 		_fm_update_status();
@@ -768,7 +768,7 @@ static lv_res_t _fm_kb_ok_action(lv_obj_t *kb)
 		return LV_RES_INV;
 	}
 
-	if (sd_mount())
+	if (!sd_mount())
 	{
 		int res = FR_OK;
 		char *path = malloc(FM_PATH_SIZE);
@@ -969,7 +969,7 @@ static lv_res_t _fm_paste_action(lv_obj_t *btn)
 		return LV_RES_OK;
 	}
 
-	if (!sd_mount())
+	if (sd_mount())
 	{
 		free(src);
 		free(dst);
@@ -1026,7 +1026,7 @@ static lv_res_t _fm_delete_confirm_action(lv_obj_t *btns, const char *txt)
 
 	if (do_delete && fm.has_sel)
 	{
-		if (sd_mount())
+		if (!sd_mount())
 		{
 			char *path = malloc(FM_PATH_SIZE);
 			_fm_join(path, fm.cwd, fm.sel);
