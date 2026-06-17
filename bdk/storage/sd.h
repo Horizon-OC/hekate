@@ -31,10 +31,7 @@ enum
 	SD_4BIT_HS25  = 2,
 	SD_UHS_SDR82  = 3,
 	SD_UHS_SDR104 = 4,
-#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
     SD_UHS_DDR208 = 5
-#endif
-
 };
 
 enum

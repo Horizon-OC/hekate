@@ -1422,7 +1422,6 @@ __attribute__ ((unused)) static int _sd_storage_set_driver_type(sdmmc_storage_t 
  * On DLL tuning method expected cards, the tuning window is tiny.
  * So check against a minimum of 8 taps window, to disallow DDR200.
  */
-#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 static int _sd_storage_enable_DDR200(sdmmc_storage_t *storage, u8 *buf)
 {
 	u32 cmd_system = UHS_DDR200_BUS_SPEED;
@@ -1462,7 +1461,6 @@ static int _sd_storage_enable_DDR200(sdmmc_storage_t *storage, u8 *buf)
 	DPRINTF("[SD] card max power over limit\n");
 	return 1;
 }
-#endif
 
 static int _sd_storage_set_card_bus_speed(sdmmc_storage_t *storage, u32 hs_type, u8 *buf)
 {
@@ -1531,16 +1529,11 @@ static int _sd_storage_set_uhs_bus_speed(sdmmc_storage_t *storage, u32 type)
 	if (sd_storage_get_fmodes(storage, buf, &fmodes))
 		return 1;
 
-#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 	DPRINTF("[SD] access: %02X, power: %02X, cmd: %02X\n", fmodes.access_mode, fmodes.power_limit, fmodes.cmd_system);
-#else
-	DPRINTF("[SD] access: %02X, power: %02X\n", fmodes.access_mode, fmodes.power_limit);
-#endif
 
 	u32 hs_type = 0;
 	switch (type)
 	{
-#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 	case SDHCI_TIMING_UHS_DDR200:
 		// Fall through if DDR200 is not supported.
 		if (fmodes.cmd_system & SD_MODE_UHS_DDR200)
@@ -1550,7 +1543,6 @@ static int _sd_storage_set_uhs_bus_speed(sdmmc_storage_t *storage, u32 type)
 			_sd_storage_set_power_limit(storage, fmodes.power_limit, buf);
 			return _sd_storage_enable_DDR200(storage, buf);
 		}
-#endif
 
 	case SDHCI_TIMING_UHS_SDR104:
 	case SDHCI_TIMING_UHS_SDR82:
