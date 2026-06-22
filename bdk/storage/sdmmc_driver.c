@@ -738,7 +738,7 @@ static int sdmmc_tuning_execute_ddr200(sdmmc_t *sdmmc)
 
 	for (u32 i = 0; i < manual_tuning.num_iter; i++)
 	{
-		_sdmmc_tuning_execute_once(sdmmc, MMC_SEND_TUNING_BLOCK, i);
+		_sdmmc_tuning_execute_once(sdmmc, SD_SEND_TUNING_BLOCK, i);
 
 		// Save result for manual tuning.
 		int sampled = (sdmmc->regs->hostctl2 >> SDHCI_CTRL_TUNED_CLK_SHIFT) & 1;

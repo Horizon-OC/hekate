@@ -1451,7 +1451,7 @@ static int _sd_storage_enable_DDR200(sdmmc_storage_t *storage, u8 *buf)
 			return 1;
 		DPRINTF("[SD] after setup clock DDR200\n");
 
-		if (sdmmc_tuning_execute(storage->sdmmc, SDHCI_TIMING_UHS_DDR200, MMC_SEND_TUNING_BLOCK))
+		if (sdmmc_tuning_execute(storage->sdmmc, SDHCI_TIMING_UHS_DDR200, SD_SEND_TUNING_BLOCK))
 			return 1;
 		DPRINTF("[SD] after tuning DDR200\n");
 
