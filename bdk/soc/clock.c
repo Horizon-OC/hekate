@@ -790,11 +790,13 @@ static int _clock_sdmmc_config_clock_host(u32 *pclock, u32 id, u32 clock)
 		divisor = CLK_SRC_DIV(1);
 		break;
 
+#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 	case 400000:
 		source = SDMMC_CLOCK_SRC_PLLC4_OUT0;
 		*pclock = 399360;
 		divisor = CLK_SRC_DIV(2.5);
 		break;
+#endif
 	}
 
 	_clock_sdmmc_table[id].clock  = clock;
@@ -908,10 +910,12 @@ void clock_sdmmc_get_card_clock_div(u32 *pclock, u16 *pdivisor, u32 type)
 		*pdivisor = 2;
 		break;
 
+#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 	case SDHCI_TIMING_UHS_DDR200: // Actual card clock: 199.68 KHz.
 		*pclock = 400000;
 		*pdivisor = 2;
 		break;
+#endif
 	}
 }
 

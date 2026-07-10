@@ -360,7 +360,9 @@ int sdmmc_setup_clock(sdmmc_t *sdmmc, u32 type)
 		break;
 
 	case SDHCI_TIMING_UHS_DDR50:
+#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 	case SDHCI_TIMING_UHS_DDR200:
+#endif
 		sdmmc->regs->hostctl2  = (sdmmc->regs->hostctl2 & (~SDHCI_CTRL_UHS_MASK)) | UHS_DDR50_BUS_SPEED;
 		sdmmc->regs->hostctl2 |= SDHCI_CTRL_VDD_180;
 		break;
@@ -610,6 +612,7 @@ static int _sdmmc_tuning_execute_once(sdmmc_t *sdmmc, u32 cmd, u32 tap)
 	sdmmc->regs->norintsts = sdmmc->regs->norintsts;
 	sdmmc->regs->clkcon &= ~SDHCI_CLOCK_CARD_EN;
 
+#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 	// Set tap if manual tuning.
 	if (tap != SDMMC_HW_TAP_TUNING)
 	{
@@ -617,6 +620,7 @@ static int _sdmmc_tuning_execute_once(sdmmc_t *sdmmc, u32 cmd, u32 tap)
 		sdmmc->regs->venclkctl   = (sdmmc->regs->venclkctl & 0xFF00FFFF) | (tap << 16);
 		sdmmc->regs->ventunctl0 |=  SDHCI_TEGRA_TUNING_TAP_HW_UPDATED;
 	}
+#endif
 
 	_sdmmc_send_tuning_cmd(sdmmc, cmd);
 	_sdmmc_commit_changes(sdmmc);
@@ -651,6 +655,7 @@ static int _sdmmc_tuning_execute_once(sdmmc_t *sdmmc, u32 cmd, u32 tap)
 	return 1;
 }
 
+#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 typedef struct _sdmmc_manual_tuning_t
 {
 	u32 result[8];
@@ -750,6 +755,7 @@ static int sdmmc_tuning_execute_ddr200(sdmmc_t *sdmmc)
 
 	return _sdmmc_manual_tuning_set_tap(sdmmc, &manual_tuning);
 }
+#endif
 
 int sdmmc_tuning_execute(sdmmc_t *sdmmc, u32 type, u32 cmd)
 {
@@ -779,8 +785,10 @@ int sdmmc_tuning_execute(sdmmc_t *sdmmc, u32 type, u32 cmd)
 	case SDHCI_TIMING_UHS_SDR25:
 		return 0;
 
+#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
 	case SDHCI_TIMING_UHS_DDR200:
 		return sdmmc_tuning_execute_ddr200(sdmmc);
+#endif
 
 	default:
 		return 1;
