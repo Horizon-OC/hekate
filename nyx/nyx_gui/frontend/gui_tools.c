@@ -170,6 +170,21 @@ static lv_res_t _create_mbox_autorcm_status(lv_obj_t *btn)
 	return LV_RES_OK;
 }
 
+static lv_res_t _mariko_train_mem_toggle(lv_obj_t *btn)
+{
+	n_cfg.mariko_train_mem = !n_cfg.mariko_train_mem;
+
+	if (n_cfg.mariko_train_mem)
+		lv_btn_set_state(btn, LV_BTN_STATE_TGL_REL);
+	else
+		lv_btn_set_state(btn, LV_BTN_STATE_REL);
+	nyx_generic_onoff_toggle(btn);
+
+	create_nyx_config_entry(false);
+
+	return LV_RES_OK;
+}
+
 static lv_res_t _create_mbox_hid(usb_ctxt_t *usbs)
 {
 	lv_obj_t *dark_bg = lv_obj_create(lv_scr_act(), NULL);
@@ -1702,7 +1717,7 @@ static void _create_tab_tools_arc_rcm_pkg12(lv_theme_t *th, lv_obj_t *parent)
 	line_sep = lv_line_create(h2, line_sep);
 	lv_obj_align(line_sep, label_txt3, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);
 
-	// Create AutoRCM On/Off button.
+	// Create AutoRCM On/Off button (Erista) or Train Memory toggle (Mariko).
 	lv_obj_t *btn3 = lv_btn_create(h2, NULL);
 	if (hekate_bg)
 	{
@@ -1715,34 +1730,58 @@ static void _create_tab_tools_arc_rcm_pkg12(lv_theme_t *th, lv_obj_t *parent)
 	label_btn = lv_label_create(btn3, NULL);
 	lv_btn_set_fit(btn3, true, true);
 	lv_label_set_recolor(label_btn, true);
-	lv_label_set_text(label_btn, SYMBOL_REFRESH"  AutoRCM #00FFC9   ON #");
-	lv_obj_align(btn3, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4);
-	lv_btn_set_action(btn3, LV_BTN_ACTION_CLICK, _create_mbox_autorcm_status);
-
-	// Set default state for AutoRCM and lock it out if patched unit.
-	if (get_set_autorcm_status(false))
-		lv_btn_set_state(btn3, LV_BTN_STATE_TGL_REL);
-	else
-		lv_btn_set_state(btn3, LV_BTN_STATE_REL);
-	nyx_generic_onoff_toggle(btn3);
-
-	if (h_cfg.rcm_patched)
-	{
-		lv_obj_set_click(btn3, false);
-		lv_btn_set_state(btn3, LV_BTN_STATE_INA);
-	}
-	autorcm_btn = btn3;
 
 	char *txt_buf = (char *)malloc(SZ_4K);
 
-	s_printf(txt_buf,
-		"Allows you to enter RCM without using #C7EA46 VOL+# & #C7EA46 HOME# (jig).\n"
-		"#FF8000 It can restore all versions of AutoRCM whenever requested.#\n"
-		"#FF3C28 This corrupts the BCT and you can't boot without a custom#\n"
-		"#FF3C28 bootloader.#");
+	if (h_cfg.t210b01)
+	{
+		lv_label_set_text(label_btn, SYMBOL_REFRESH"  Train DRAM #00FFC9   ON #");
+		lv_btn_set_action(btn3, LV_BTN_ACTION_CLICK, _mariko_train_mem_toggle);
 
-	if (h_cfg.rcm_patched)
-		strcat(txt_buf, " #FF8000 This is disabled because this unit is patched!#");
+		if (n_cfg.mariko_train_mem)
+			lv_btn_set_state(btn3, LV_BTN_STATE_TGL_REL);
+		else
+			lv_btn_set_state(btn3, LV_BTN_STATE_REL);
+		nyx_generic_onoff_toggle(btn3);
+
+		autorcm_btn = btn3;
+
+		s_printf(txt_buf,
+			"Trains DRAM on every Nyx boot for improved\n"
+			"interface performance on Mariko consoles.\n"
+			"#FF8000 Enabled by default. Disable this only if it#\n"
+			"#FF8000 causes hangs or freezes on your console.#");
+	}
+	else
+	{
+		lv_label_set_text(label_btn, SYMBOL_REFRESH"  AutoRCM #00FFC9   ON #");
+		lv_btn_set_action(btn3, LV_BTN_ACTION_CLICK, _create_mbox_autorcm_status);
+
+		// Set default state for AutoRCM and lock it out if patched unit.
+		if (get_set_autorcm_status(false))
+			lv_btn_set_state(btn3, LV_BTN_STATE_TGL_REL);
+		else
+			lv_btn_set_state(btn3, LV_BTN_STATE_REL);
+		nyx_generic_onoff_toggle(btn3);
+
+		if (h_cfg.rcm_patched)
+		{
+			lv_obj_set_click(btn3, false);
+			lv_btn_set_state(btn3, LV_BTN_STATE_INA);
+		}
+		autorcm_btn = btn3;
+
+		s_printf(txt_buf,
+			"Allows you to enter RCM without using #C7EA46 VOL+# & #C7EA46 HOME# (jig).\n"
+			"#FF8000 It can restore all versions of AutoRCM whenever requested.#\n"
+			"#FF3C28 This corrupts the BCT and you can't boot without a custom#\n"
+			"#FF3C28 bootloader.#");
+
+		if (h_cfg.rcm_patched)
+			strcat(txt_buf, " #FF8000 This is disabled because this unit is patched!#");
+	}
+
+	lv_obj_align(btn3, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4);
 
 	lv_obj_t *label_txt4 = lv_label_create(h2, NULL);
 	lv_label_set_recolor(label_txt4, true);
@@ -1793,7 +1832,9 @@ void create_tab_tools(lv_theme_t *th, lv_obj_t *parent)
 	lv_tabview_set_btns_pos(tv, LV_TABVIEW_BTNS_POS_BOTTOM);
 
 	lv_obj_t *tab1= lv_tabview_add_tab(tv, "eMMC "SYMBOL_DOT" SD Partitions "SYMBOL_DOT" USB");
-	lv_obj_t *tab2 = lv_tabview_add_tab(tv, "Arch bit "SYMBOL_DOT" RCM "SYMBOL_DOT" Touch "SYMBOL_DOT" Pkg1/2");
+	lv_obj_t *tab2 = lv_tabview_add_tab(tv, h_cfg.t210b01 ?
+		"Arch bit "SYMBOL_DOT" DRAM "SYMBOL_DOT" Touch "SYMBOL_DOT" Pkg1/2" :
+		"Arch bit "SYMBOL_DOT" RCM "SYMBOL_DOT" Touch "SYMBOL_DOT" Pkg1/2");
 
 	lv_obj_t *line_sep = lv_line_create(tv, NULL);
 	static const lv_point_t line_pp[] = { {0, 0}, { 0, LV_DPI / 4} };

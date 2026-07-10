@@ -258,6 +258,8 @@ skip_main_cfg_parse:
 					n_cfg.jc_force_right = atoi(kv->val) == 1;
 				else if (!strcmp("bpmpclock",    kv->key))
 					n_cfg.bpmp_clock     = atoi(kv->val);
+				else if (!strcmp("marikotrainmem", kv->key))
+					n_cfg.mariko_train_mem = atoi(kv->val);
 			}
 
 			// Check if user canceled time setting before.
@@ -442,7 +444,11 @@ void nyx_init_load_res()
 	minerva_init((minerva_str_t *)&nyx_str->minerva);
 	minerva_change_freq(FREQ_1600);
 
-    if (h_cfg.t210b01) {
+	// Load hekate/Nyx configuration.
+	_load_saved_configuration();
+
+    // Mariko DRAM training, guarded by config. Erista is unaffected (t210b01 false).
+    if (h_cfg.t210b01 && n_cfg.mariko_train_mem) {
         bool trained = false;
         MarikoTrainMemory(&trained);
 
@@ -450,9 +456,6 @@ void nyx_init_load_res()
             EPRINTF("Failed to train memory!");
         }
     }
-
-	// Load hekate/Nyx configuration.
-	_load_saved_configuration();
 
 	// Load Nyx resources.
 	if (nyx_load_resources())

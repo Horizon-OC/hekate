@@ -60,6 +60,7 @@ void set_nyx_default_configuration()
 	n_cfg.jc_disable     = 0;
 	n_cfg.jc_force_right = 0;
 	n_cfg.bpmp_clock     = 0;
+	n_cfg.mariko_train_mem = 1;
 }
 
 int create_config_entry()
@@ -248,6 +249,10 @@ int create_nyx_config_entry(bool force_unmount)
 
 	f_puts("\nbpmpclock=", &fp);
 	itoa(n_cfg.bpmp_clock, lbuf, 10);
+	f_puts(lbuf, &fp);
+
+	f_puts("\nmarikotrainmem=", &fp);
+	itoa(n_cfg.mariko_train_mem, lbuf, 10);
 	f_puts(lbuf, &fp);
 
 	f_puts("\n", &fp);
