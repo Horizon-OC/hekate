@@ -258,8 +258,8 @@ skip_main_cfg_parse:
 					n_cfg.jc_force_right = atoi(kv->val) == 1;
 				else if (!strcmp("bpmpclock",    kv->key))
 					n_cfg.bpmp_clock     = atoi(kv->val);
-				else if (!strcmp("marikotrainmem", kv->key))
-					n_cfg.mariko_train_mem = atoi(kv->val);
+				else if (!strcmp("marikotrainsafemode", kv->key))
+					n_cfg.mariko_train_safe_mode = atoi(kv->val);
 			}
 
 			// Check if user canceled time setting before.
@@ -446,10 +446,19 @@ void nyx_init_load_res()
 
 	// Load hekate/Nyx configuration.
 	_load_saved_configuration();
+    bool trained = false;
 
-    // Mariko DRAM training, guarded by config. Erista is unaffected (t210b01 false).
-    if (h_cfg.t210b01 && n_cfg.mariko_train_mem) {
-        bool trained = false;
+    if (h_cfg.t210b01 && n_cfg.mariko_train_safe_mode != MARIKO_TRAIN_MODE_DISABLE) {
+		// Safer but slower
+		if (n_cfg.mariko_train_safe_mode == MARIKO_TRAIN_MODE_SAFE) {
+            for (int i = 0; i < 2; i++) {
+                MarikoTrainMemory(&trained);
+                msleep(1500);
+                RestoreMemoryClockRateMariko();
+            }
+            msleep(500);
+        }
+
         MarikoTrainMemory(&trained);
 
         if (!trained) {

@@ -43,6 +43,13 @@ typedef struct _hekate_config
 	hos_eks_mbr_t *eks;
 } hekate_config;
 
+enum
+{
+	MARIKO_TRAIN_MODE_DISABLE = 0, // No training.
+	MARIKO_TRAIN_MODE_ENABLE  = 1, // Normal training (default).
+	MARIKO_TRAIN_MODE_SAFE    = 2, // Slow but safe training
+};
+
 typedef struct _nyx_config
 {
 	u32 theme_bg; // COLOR_BG_BASE_MIN - COLOR_BG_BASE_MAX.
@@ -57,7 +64,7 @@ typedef struct _nyx_config
 	u32 jc_disable;
 	u32 jc_force_right;
 	u32 bpmp_clock;
-	u32 mariko_train_mem; // Mariko-only: run DRAM training on Nyx boot.
+	u32 mariko_train_safe_mode;
 } nyx_config;
 
 extern hekate_config h_cfg;

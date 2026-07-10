@@ -170,16 +170,31 @@ static lv_res_t _create_mbox_autorcm_status(lv_obj_t *btn)
 	return LV_RES_OK;
 }
 
-static lv_res_t _mariko_train_mem_toggle(lv_obj_t *btn)
+static void _mariko_train_mode_set_btn(lv_obj_t *btn)
 {
-	n_cfg.mariko_train_mem = !n_cfg.mariko_train_mem;
-
-	if (n_cfg.mariko_train_mem)
-		lv_btn_set_state(btn, LV_BTN_STATE_TGL_REL);
-	else
+	lv_obj_t *lbl = lv_obj_get_child(btn, NULL);
+	switch (n_cfg.mariko_train_safe_mode)
+	{
+	case MARIKO_TRAIN_MODE_DISABLE:
+		lv_label_set_text(lbl, SYMBOL_REFRESH"  DRAM Train #FF3C28   OFF #");
 		lv_btn_set_state(btn, LV_BTN_STATE_REL);
-	nyx_generic_onoff_toggle(btn);
+		break;
+	case MARIKO_TRAIN_MODE_SAFE:
+		lv_label_set_text(lbl, SYMBOL_REFRESH"  DRAM Train #00DDFF  SAFE #");
+		lv_btn_set_state(btn, LV_BTN_STATE_TGL_REL);
+		break;
+	default: // MARIKO_TRAIN_MODE_ENABLE
+		lv_label_set_text(lbl, SYMBOL_REFRESH"  DRAM Train #96FF00   ON #");
+		lv_btn_set_state(btn, LV_BTN_STATE_TGL_REL);
+		break;
+	}
+}
 
+static lv_res_t _mariko_train_mode_cycle(lv_obj_t *btn)
+{
+	n_cfg.mariko_train_safe_mode = (n_cfg.mariko_train_safe_mode + 1) % 3;
+
+	_mariko_train_mode_set_btn(btn);
 	create_nyx_config_entry(false);
 
 	return LV_RES_OK;
@@ -1735,22 +1750,16 @@ static void _create_tab_tools_arc_rcm_pkg12(lv_theme_t *th, lv_obj_t *parent)
 
 	if (h_cfg.t210b01)
 	{
-		lv_label_set_text(label_btn, SYMBOL_REFRESH"  Train DRAM #00FFC9   ON #");
-		lv_btn_set_action(btn3, LV_BTN_ACTION_CLICK, _mariko_train_mem_toggle);
-
-		if (n_cfg.mariko_train_mem)
-			lv_btn_set_state(btn3, LV_BTN_STATE_TGL_REL);
-		else
-			lv_btn_set_state(btn3, LV_BTN_STATE_REL);
-		nyx_generic_onoff_toggle(btn3);
+		lv_btn_set_action(btn3, LV_BTN_ACTION_CLICK, _mariko_train_mode_cycle);
+		_mariko_train_mode_set_btn(btn3);
 
 		autorcm_btn = btn3;
 
 		s_printf(txt_buf,
-			"Trains DRAM on every Nyx boot for improved\n"
-			"interface performance on Mariko consoles.\n"
-			"#FF8000 Enabled by default. Disable this only if it#\n"
-			"#FF8000 causes hangs or freezes on your console.#");
+			"DRAM training mode. Tap to cycle:\n"
+			"#FF3C28 OFF# none   #96FF00 ON# train (default)   #00DDFF SAFE# stable\n"
+			"#FF8000 SAFE trains slowly for consoles that glitch#\n"
+			"#FF8000 or fail to boot with normal training.#");
 	}
 	else
 	{
