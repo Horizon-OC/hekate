@@ -14,6 +14,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Base table which the other tables use for compression purpose
+static const u8 T210b01SdevEmcDvfsTableBase[] = {
+    #embed "mtc_tables/combined/_base/table.bin"
+};
+
 static const u8 T210b01SdevEmcDvfsTableM4gb03[] = {
     #embed "mtc_tables/combined/T210b01SdevEmcDvfsTableM4gb03/table.bin"
 };

@@ -117,7 +117,16 @@ static EmcDvfsTimingTable *GetEmcDvfsTimingTables(int index, void *mtc_tables_bu
     }
 
     EmcDvfsTimingTable *out_tables = (EmcDvfsTimingTable *)mtc_tables_buffer;
-    Lz4Uncompress(out_tables, 2 * sizeof(EmcDvfsTimingTable), cmp_table, cmp_table_size);
+    const size_t table_size = 2 * sizeof(EmcDvfsTimingTable);
+
+    static u8 base_buffer[2 * sizeof(EmcDvfsTimingTable)];
+    Lz4Uncompress(base_buffer, table_size, T210b01SdevEmcDvfsTableBase, sizeof(T210b01SdevEmcDvfsTableBase));
+    Lz4Uncompress(out_tables, table_size, cmp_table, cmp_table_size);
+
+    u8 *out_bytes = (u8 *)out_tables;
+    for (size_t i = 0; i < table_size; i++)
+        out_bytes[i] ^= base_buffer[i];
+
     return out_tables;
 }
 
