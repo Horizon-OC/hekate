@@ -45,9 +45,8 @@ typedef struct _hekate_config
 
 enum
 {
-	MARIKO_TRAIN_MODE_DISABLE = 0, // No training.
-	MARIKO_TRAIN_MODE_ENABLE  = 1, // Normal training (default).
-	MARIKO_TRAIN_MODE_SAFE    = 2, // Slow but safe training
+	TRAIN_MODE_DISABLE = 0, // No training.
+	TRAIN_MODE_ENABLE  = 1, // Training (default).
 };
 
 typedef struct _nyx_config
@@ -64,7 +63,7 @@ typedef struct _nyx_config
 	u32 jc_disable;
 	u32 jc_force_right;
 	u32 bpmp_clock;
-	u32 mariko_train_safe_mode;
+	u32 train_mode;
 } nyx_config;
 
 extern hekate_config h_cfg;

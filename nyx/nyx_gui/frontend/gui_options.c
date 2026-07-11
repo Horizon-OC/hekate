@@ -1428,14 +1428,17 @@ static lv_res_t _home_screen_action(lv_obj_t *ddlist)
 	return LV_RES_OK;
 }
 
-static lv_res_t _mariko_train_mode_action(lv_obj_t *ddlist)
+static lv_res_t _train_mode_action(lv_obj_t *btn)
 {
-	u32 new_selection = lv_ddlist_get_selected(ddlist);
-	if (n_cfg.mariko_train_safe_mode != new_selection)
-	{
-		n_cfg.mariko_train_safe_mode = new_selection;
-		create_nyx_config_entry(false);
-	}
+	n_cfg.train_mode = !n_cfg.train_mode;
+
+	if (n_cfg.train_mode)
+		lv_btn_set_state(btn, LV_BTN_STATE_TGL_REL);
+	else
+		lv_btn_set_state(btn, LV_BTN_STATE_REL);
+	nyx_generic_onoff_toggle(btn);
+
+	create_nyx_config_entry(false);
 
 	return LV_RES_OK;
 }
@@ -2000,13 +2003,6 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 	lv_cont_set_layout(sw_h2, LV_LAYOUT_OFF);
 	lv_obj_align(sw_h2, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
 
-	lv_obj_t *l_cont = lv_cont_create(sw_h2, NULL);
-	lv_cont_set_style(l_cont, &lv_style_transp_tight);
-	lv_cont_set_fit(l_cont, true, true);
-	lv_obj_set_click(l_cont, false);
-	lv_cont_set_layout(l_cont, LV_LAYOUT_OFF);
-	lv_obj_set_opa_scale(l_cont, LV_OPA_40);
-
 	lv_obj_t *label_sep = lv_label_create(sw_h2, NULL);
 	lv_label_set_static_text(label_sep, "");
 
@@ -2021,40 +2017,21 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 	lv_line_set_style(line_sep, th->line.decor);
 	lv_obj_align(line_sep, label_txt, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);
 
-	lv_obj_t *label_train = lv_label_create(l_cont, NULL);
-	lv_label_set_static_text(label_train, SYMBOL_REFRESH" DRAM Training  ");
-	lv_obj_set_style(label_train, th->label.prim);
-	lv_obj_align(label_train, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4);
+	// DRAM training on/off.
+	lv_obj_t *btn_train = lv_btn_create(sw_h2, NULL);
+	nyx_create_onoff_button(th, sw_h2, btn_train, SYMBOL_REFRESH" DRAM Training", _train_mode_action, true);
+	lv_obj_align(btn_train, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 10);
+	if (n_cfg.train_mode)
+		lv_btn_set_state(btn_train, LV_BTN_STATE_TGL_REL);
+	nyx_generic_onoff_toggle(btn_train);
 
-	lv_obj_t *ddlist = lv_ddlist_create(l_cont, NULL);
-	lv_obj_set_top(ddlist, true);
-	lv_ddlist_set_draw_arrow(ddlist, true);
-	// Trailing spaces reserve room so the widest option doesn't clip into the arrow.
-	lv_ddlist_set_options(ddlist,
-		"Disabled       \n"
-		"Enabled\n"
-		"Safe Mode");
-	lv_ddlist_set_selected(ddlist, n_cfg.mariko_train_safe_mode);
-	lv_obj_align(ddlist, label_train, LV_ALIGN_OUT_RIGHT_MID, LV_DPI * 2 / 3, 0);
-
-	// Mariko-only: Erista never trains DRAM here, so lock the control.
-	if (h_cfg.t210b01)
-		lv_ddlist_set_action(ddlist, _mariko_train_mode_action);
-	else
-		lv_obj_set_click(ddlist, false);
-
-	lv_obj_t *label_txt2 = lv_label_create(l_cont, NULL);
+	lv_obj_t *label_txt2 = lv_label_create(sw_h2, NULL);
 	lv_label_set_recolor(label_txt2, true);
 	lv_label_set_static_text(label_txt2,
-		"Trains DRAM to 1600 MHz on Nyx boot. #FF8000 Mariko only.#\n"
-		"#FF8000 Safe Mode:# #C7EA46 slower boot but more stable on consoles#\n"
-		"#C7EA46 that glitch or fail to boot with normal training.#");
+		"Trains DRAM to 1600 MHz on Nyx boot.\n"
+		"#FF8000 Disable only if your console hangs or fails to boot.#");
 	lv_obj_set_style(label_txt2, &hint_small_style);
-	lv_obj_align(label_txt2, label_train, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 4);
-
-	lv_obj_set_top(l_cont, true);
-	lv_obj_set_parent(ddlist, l_cont);
-	lv_obj_set_top(ddlist, true);
+	lv_obj_align(label_txt2, btn_train, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 12);
 }
 
 void create_tab_options(lv_theme_t *th, lv_obj_t *parent)

@@ -103,7 +103,7 @@ int minerva_init(minerva_str_t *mtc_str)
 	{
 		mtc_cfg->train_mode = OP_SWITCH;
 		mtc_cfg->rate_from = FREQ_204;
-		mtc_cfg->rate_to = FREQ_NO_TABLE_MAX;
+		mtc_cfg->rate_to = FREQ_204;
 		mtc_call(mtc_cfg, NULL);
 
 		return 0;

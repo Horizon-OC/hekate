@@ -2517,6 +2517,7 @@ void MarikoTrainMemory(bool *out_did_training) {
     // }
 
     Dvfs(dst_timing, src_timing, true);
+    msleep(100);
     Dvfs(dst_timing, src_timing, false);
 
     *out_did_training = true;

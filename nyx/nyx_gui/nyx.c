@@ -258,8 +258,8 @@ skip_main_cfg_parse:
 					n_cfg.jc_force_right = atoi(kv->val) == 1;
 				else if (!strcmp("bpmpclock",    kv->key))
 					n_cfg.bpmp_clock     = atoi(kv->val);
-				else if (!strcmp("marikotrainsafemode", kv->key))
-					n_cfg.mariko_train_safe_mode = atoi(kv->val);
+				else if (!strcmp("trainmode", kv->key))
+					n_cfg.train_mode = atoi(kv->val);
 			}
 
 			// Check if user canceled time setting before.
@@ -440,26 +440,19 @@ void nyx_init_load_res()
 			_show_errors(SD_MOUNT_ERROR); // Fatal.
 	}
 
-	// Train DRAM and switch to max frequency.
-	minerva_init((minerva_str_t *)&nyx_str->minerva);
-	minerva_change_freq(FREQ_1600);
-
 	// Load hekate/Nyx configuration.
 	_load_saved_configuration();
     bool trained = false;
 
-    if (h_cfg.t210b01 && n_cfg.mariko_train_safe_mode != MARIKO_TRAIN_MODE_DISABLE) {
-		// Safer but slower
-		if (n_cfg.mariko_train_safe_mode == MARIKO_TRAIN_MODE_SAFE) {
-            for (int i = 0; i < 3; i++) {
-                MarikoTrainMemory(&trained);
-                msleep(50);
-                RestoreMemoryClockRateMariko();
-                msleep(50);
-            }
-            msleep(100);
-        }
+	if(n_cfg.train_mode != TRAIN_MODE_DISABLE) {
+		// Train DRAM and switch to max frequency.
+		minerva_init((minerva_str_t *)&nyx_str->minerva);
 
+		if (!h_cfg.t210b01)
+			minerva_change_freq(FREQ_1600);
+	}
+
+    if (h_cfg.t210b01 && n_cfg.train_mode != TRAIN_MODE_DISABLE) {
         MarikoTrainMemory(&trained);
 
         if (!trained) {
