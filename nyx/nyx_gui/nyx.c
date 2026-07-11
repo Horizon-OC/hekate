@@ -444,7 +444,7 @@ void nyx_init_load_res()
 	_load_saved_configuration();
     bool trained = false;
 
-	if(n_cfg.train_mode != TRAIN_MODE_DISABLE) {
+	if (!h_cfg.t210b01 || n_cfg.train_mode != TRAIN_MODE_DISABLE) {
 		// Train DRAM and switch to max frequency.
 		minerva_init((minerva_str_t *)&nyx_str->minerva);
 

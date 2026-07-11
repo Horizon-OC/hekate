@@ -1988,50 +1988,63 @@ static void _create_tab_options_general(lv_theme_t *th, lv_obj_t *parent)
 
 static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 {
+	lv_page_set_scrl_layout(parent, LV_LAYOUT_PRETTY);
+
 	static lv_style_t h_style;
 	lv_style_copy(&h_style, &lv_style_transp);
 	h_style.body.padding.inner = 0;
 	h_style.body.padding.hor = LV_DPI - (LV_DPI / 4);
 	h_style.body.padding.ver = LV_DPI / 6;
 
-	// Left column, anchored top-left so future settings can fill the rest of the tab.
-	lv_obj_t *sw_h2 = lv_cont_create(parent, NULL);
-	lv_cont_set_style(sw_h2, &h_style);
-	lv_cont_set_fit(sw_h2, false, true);
-	lv_obj_set_width(sw_h2, (LV_HOR_RES / 9) * 4);
-	lv_obj_set_click(sw_h2, false);
-	lv_cont_set_layout(sw_h2, LV_LAYOUT_OFF);
-	lv_obj_align(sw_h2, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+	// Create DRAM container.
+	lv_obj_t *h1 = lv_cont_create(parent, NULL);
+	lv_cont_set_style(h1, &h_style);
+	lv_cont_set_fit(h1, false, true);
+	lv_obj_set_width(h1, (LV_HOR_RES / 9) * 4);
+	lv_obj_set_click(h1, false);
+	lv_cont_set_layout(h1, LV_LAYOUT_OFF);
 
-	lv_obj_t *label_sep = lv_label_create(sw_h2, NULL);
+	lv_obj_t *label_sep = lv_label_create(h1, NULL);
 	lv_label_set_static_text(label_sep, "");
 
-	lv_obj_t *label_txt = lv_label_create(sw_h2, NULL);
-	lv_label_set_static_text(label_txt, SYMBOL_SETTINGS" DRAM");
+	lv_obj_t *label_txt = lv_label_create(h1, NULL);
+	lv_label_set_static_text(label_txt, "DRAM");
 	lv_obj_set_style(label_txt, th->label.prim);
-	lv_obj_align(label_txt, label_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, -LV_DPI / 5 + 3);
+	lv_obj_align(label_txt, label_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, -LV_DPI * 3 / 10);
 
-	lv_obj_t *line_sep = lv_line_create(sw_h2, NULL);
+	lv_obj_t *line_sep = lv_line_create(h1, NULL);
 	static const lv_point_t line_pp[] = { {0, 0}, { LV_HOR_RES - (LV_DPI - (LV_DPI / 4)) * 2, 0} };
 	lv_line_set_points(line_sep, line_pp, 2);
 	lv_line_set_style(line_sep, th->line.decor);
 	lv_obj_align(line_sep, label_txt, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);
 
-	// DRAM training on/off.
-	lv_obj_t *btn_train = lv_btn_create(sw_h2, NULL);
-	nyx_create_onoff_button(th, sw_h2, btn_train, SYMBOL_REFRESH" DRAM Training", _train_mode_action, true);
-	lv_obj_align(btn_train, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 10);
-	if (n_cfg.train_mode)
-		lv_btn_set_state(btn_train, LV_BTN_STATE_TGL_REL);
-	nyx_generic_onoff_toggle(btn_train);
+	// DRAM training on/off. Mariko only
+	if (h_cfg.t210b01)
+	{
+		lv_obj_t *btn_train = lv_btn_create(h1, NULL);
+		nyx_create_onoff_button(th, h1, btn_train, SYMBOL_REFRESH" DRAM Training", _train_mode_action, true);
+		lv_obj_align(btn_train, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 10);
+		if (n_cfg.train_mode)
+			lv_btn_set_state(btn_train, LV_BTN_STATE_TGL_REL);
+		nyx_generic_onoff_toggle(btn_train);
 
-	lv_obj_t *label_txt2 = lv_label_create(sw_h2, NULL);
-	lv_label_set_recolor(label_txt2, true);
-	lv_label_set_static_text(label_txt2,
-		"Trains DRAM to 1600 MHz on Nyx boot.\n"
-		"#FF8000 Disable only if your console hangs or fails to boot.#");
-	lv_obj_set_style(label_txt2, &hint_small_style);
-	lv_obj_align(label_txt2, btn_train, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 12);
+		lv_obj_t *label_txt2 = lv_label_create(h1, NULL);
+		lv_label_set_recolor(label_txt2, true);
+		lv_label_set_static_text(label_txt2,
+			"Trains DRAM to 1600 MHz on Nyx boot.\n"
+			"#FF8000 Disable only if your console hangs or fails to boot.#");
+		lv_obj_set_style(label_txt2, &hint_small_style);
+		lv_obj_align(label_txt2, btn_train, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 12);
+	}
+	else
+	{
+		lv_obj_t *label_txt2 = lv_label_create(h1, NULL);
+		lv_label_set_recolor(label_txt2, true);
+		lv_label_set_static_text(label_txt2,
+			"#C7EA46 DRAM is trained automatically by Minerva on this console.#");
+		lv_obj_set_style(label_txt2, &hint_small_style);
+		lv_obj_align(label_txt2, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4);
+	}
 }
 
 void create_tab_options(lv_theme_t *th, lv_obj_t *parent)
@@ -2065,4 +2078,9 @@ void create_tab_options(lv_theme_t *th, lv_obj_t *parent)
 
 	_create_tab_options_general(th, tab1);
 	_create_tab_options_advanced(th, tab2);
+
+	lv_obj_set_drag(lv_page_get_scrl(tab1), false);
+	lv_obj_set_drag(lv_page_get_scrl(tab2), false);
+
+	lv_tabview_set_tab_act(tv, 0, false);
 }
