@@ -50,6 +50,7 @@ typedef struct _gui_status_bar_ctx
 	lv_obj_t *clocks;
 	lv_obj_t *battery;
 	lv_obj_t *battery_more;
+	lv_obj_t *line_top;
 	lv_obj_t *line_bottom;
 } gui_status_bar_ctx;
 

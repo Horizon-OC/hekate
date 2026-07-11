@@ -24,6 +24,7 @@
 #include "gui_tools_files.h"
 #include "gui_info.h"
 #include "gui_options.h"
+#include "gui_l4t_oc.h"
 #include <libs/lvgl/lv_themes/lv_theme_hekate.h>
 #include <libs/lvgl/lvgl.h>
 #include "../gfx/logos-gui.h"
@@ -1642,14 +1643,29 @@ typedef struct _launch_menu_entries_t
 {
 	lv_obj_t *btn[20];
 	lv_obj_t *label[20];
+	char name[20][128]; // Boot entry section names
 } launch_menu_entries_t;
 
 static launch_menu_entries_t launch_ctxt;
 static lv_obj_t *launch_bg = NULL;
 static bool launch_bg_done = false;
 
+static u32 launch_oc_press_ms      = 0;
+static lv_indev_t *launch_oc_press_indev   = NULL;
+static char *launch_oc_press_name    = NULL;
+static bool launch_oc_press_pending = false;
+static bool launch_oc_press_fired   = false;
+static lv_task_t *launch_oc_press_task    = NULL;
+
 static lv_res_t _launch_more_cfg_action(lv_obj_t *btn)
 {
+	launch_oc_press_pending = false;
+	if (launch_oc_press_fired)
+	{
+		launch_oc_press_fired = false;
+		return LV_RES_OK;
+	}
+
 	lv_btn_ext_t *ext = lv_obj_get_ext_attr(btn);
 
 	_launch_hos(ext->idx, 1);
@@ -1735,11 +1751,53 @@ static lv_obj_t *create_window_launch(const char *win_title)
 
 static lv_res_t _launch_action(lv_obj_t *btn)
 {
+	// A completed long-press already opened the OC editor; swallow this click.
+	launch_oc_press_pending = false;
+	if (launch_oc_press_fired)
+	{
+		launch_oc_press_fired = false;
+		return LV_RES_OK;
+	}
+
 	lv_btn_ext_t *ext = lv_obj_get_ext_attr(btn);
 
 	_launch_hos(ext->idx, 0);
 
 	return LV_RES_OK;
+}
+
+static lv_res_t _launch_oc_press_action(lv_obj_t *btn)
+{
+	// The entry name was stashed on the button when it was created as L4T.
+	launch_oc_press_ms      = get_tmr_ms();
+	launch_oc_press_name    = (char *)lv_obj_get_free_ptr(btn);
+	launch_oc_press_indev   = lv_indev_get_act();
+	launch_oc_press_pending = true;
+	launch_oc_press_fired   = false;
+
+	return LV_RES_OK;
+}
+
+static void _launch_oc_longpress_task(void *unused)
+{
+	if (!launch_oc_press_pending)
+		return;
+
+	// Cancel if the touch turned into a scroll/drag.
+	if (launch_oc_press_indev && lv_indev_is_dragging(launch_oc_press_indev))
+	{
+		launch_oc_press_pending = false;
+		return;
+	}
+
+	if ((get_tmr_ms() - launch_oc_press_ms) < 400)
+		return;
+
+	launch_oc_press_pending = false;
+	launch_oc_press_fired   = true; // Consume the upcoming click so it doesn't launch.
+
+	if (launch_oc_press_name)
+		create_window_l4t_oc_editor(launch_oc_press_name);
 }
 
 static lv_res_t logs_onoff_toggle(lv_obj_t *btn)
@@ -1806,6 +1864,12 @@ static lv_res_t _create_window_home_launch(lv_obj_t *btn)
 {
 	const u32 max_entries = n_cfg.entries_5_col ? 10 : 8;
 	const launch_button_pos_t *launch_button_pos = n_cfg.entries_5_col ? launch_button_pos10 : launch_button_pos8;
+
+	// Arm the L4T long-press detector (single global task, created once).
+	launch_oc_press_pending = false;
+	launch_oc_press_fired   = false;
+	if (!launch_oc_press_task)
+		launch_oc_press_task = lv_task_create(_launch_oc_longpress_task, 30, LV_TASK_PRIO_MID, NULL);
 
 	char *icon_path;
 
@@ -1953,6 +2017,7 @@ ini_parsing:
 
 		icon_path = NULL;
 		bool payload = false;
+		bool is_l4t = false;
 		bool img_colorize = false;
 		bool img_noborder = false;
 		lv_img_dsc_t *bmp = NULL;
@@ -1965,6 +2030,8 @@ ini_parsing:
 				icon_path = kv->val;
 			else if (!strcmp("payload", kv->key))
 				payload = true;
+			else if (!strcmp("l4t", kv->key) && kv->val[0] == '1')
+				is_l4t = true;
 		}
 
 		// If icon not found, check res folder for section_name.bmp.
@@ -2096,6 +2163,16 @@ ini_parsing:
 			lv_btn_set_action(btns, LV_BTN_ACTION_CLICK, _launch_action);
 		else
 			lv_btn_set_action(btns, LV_BTN_ACTION_CLICK, _launch_more_cfg_action);
+
+		// L4T entries expose a RAM OC editor via long-press (handled by the
+		// press action + _launch_oc_longpress_task; a normal click still boots).
+		if (is_l4t)
+		{
+			strncpy(launch_ctxt.name[curr_btn_idx], ini_sec->name, sizeof(launch_ctxt.name[0]) - 1);
+			launch_ctxt.name[curr_btn_idx][sizeof(launch_ctxt.name[0]) - 1] = 0;
+			lv_obj_set_free_ptr(btns, launch_ctxt.name[curr_btn_idx]);
+			lv_btn_set_action(btns, LV_BTN_ACTION_PR, _launch_oc_press_action);
+		}
 
 		// Set button's label text.
 		lv_label_set_text(launch_ctxt.label[curr_btn_idx], ini_sec->name);
@@ -2664,6 +2741,7 @@ static void _nyx_main_menu(lv_theme_t * th)
 	lv_obj_set_pos(line, LV_DPI * 3 / 10, 63);
 
 	lv_obj_set_top(line, true);
+	status_bar.line_top = line;
 
 	line = lv_cont_create(lv_layer_top(), line);
 	lv_obj_set_pos(line, LV_DPI * 3 / 10, 656);

@@ -2631,7 +2631,9 @@ static lv_res_t _create_window_sdcard_info_status(lv_obj_t *btn)
 	case SD_4BIT_HS25:
 		strcat(txt_buf, "HS25");
 		break;
-	case SD_UHS_SDR82: // Report as SDR104.
+	case SD_UHS_SDR82:
+		strcat(txt_buf, "SDR82");
+		break;
 	case SD_UHS_SDR104:
 		strcat(txt_buf, "SDR104");
 		break;

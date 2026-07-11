@@ -29,7 +29,7 @@ TRACK_LDFLAGS = $(BUILDDIR)/.ldflags
 # Main and graphics.
 OBJS =  start exception_handlers nyx heap gfx \
 		gui gui_info gui_tools gui_options gui_emmc_tools gui_emummc_tools gui_tools_partition_manager \
-		gui_tools_files fe_emummc_tools fe_emmc_tools
+		gui_tools_files gui_l4t_oc fe_emummc_tools fe_emmc_tools
 
 # Hardware.
 OBJS += actmon bpmp ccplex clock di vic i2c irq timer \
