@@ -2619,6 +2619,8 @@ static void _nyx_main_menu(lv_theme_t * th)
 	lv_page_set_style(tab_info, LV_PAGE_STYLE_SCRL, &no_padding);
 
 	lv_obj_t *tab_options = lv_tabview_add_tab(tv, SYMBOL_SETTINGS" Options");
+	lv_page_set_style(tab_options, LV_PAGE_STYLE_BG, &no_padding);
+	lv_page_set_style(tab_options, LV_PAGE_STYLE_SCRL, &no_padding);
 
 	_create_tab_about(th, tab_about);
 	_create_tab_home(th, tab_home);

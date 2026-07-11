@@ -1428,6 +1428,18 @@ static lv_res_t _home_screen_action(lv_obj_t *ddlist)
 	return LV_RES_OK;
 }
 
+static lv_res_t _mariko_train_mode_action(lv_obj_t *ddlist)
+{
+	u32 new_selection = lv_ddlist_get_selected(ddlist);
+	if (n_cfg.mariko_train_safe_mode != new_selection)
+	{
+		n_cfg.mariko_train_safe_mode = new_selection;
+		create_nyx_config_entry(false);
+	}
+
+	return LV_RES_OK;
+}
+
 static lv_res_t _action_nyx_options_save(lv_obj_t *btns, const char * txt)
 {
 	int btn_idx = lv_btnm_get_pressed(btns);
@@ -1779,7 +1791,7 @@ lv_res_t create_win_nyx_options(lv_obj_t *parrent_btn)
 	return LV_RES_OK;
 }
 
-void create_tab_options(lv_theme_t *th, lv_obj_t *parent)
+static void _create_tab_options_general(lv_theme_t *th, lv_obj_t *parent)
 {
 	lv_page_set_scrl_layout(parent, LV_LAYOUT_PRETTY);
 
@@ -1969,4 +1981,111 @@ void create_tab_options(lv_theme_t *th, lv_obj_t *parent)
 	lv_obj_set_top(l_cont, true); // Set the ddlist container at top.
 	lv_obj_set_parent(ddlist, l_cont); // Reorder ddlist.
 	lv_obj_set_top(ddlist, true);
+}
+
+static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
+{
+	static lv_style_t h_style;
+	lv_style_copy(&h_style, &lv_style_transp);
+	h_style.body.padding.inner = 0;
+	h_style.body.padding.hor = LV_DPI - (LV_DPI / 4);
+	h_style.body.padding.ver = LV_DPI / 6;
+
+	// Left column, anchored top-left so future settings can fill the rest of the tab.
+	lv_obj_t *sw_h2 = lv_cont_create(parent, NULL);
+	lv_cont_set_style(sw_h2, &h_style);
+	lv_cont_set_fit(sw_h2, false, true);
+	lv_obj_set_width(sw_h2, (LV_HOR_RES / 9) * 4);
+	lv_obj_set_click(sw_h2, false);
+	lv_cont_set_layout(sw_h2, LV_LAYOUT_OFF);
+	lv_obj_align(sw_h2, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+
+	lv_obj_t *l_cont = lv_cont_create(sw_h2, NULL);
+	lv_cont_set_style(l_cont, &lv_style_transp_tight);
+	lv_cont_set_fit(l_cont, true, true);
+	lv_obj_set_click(l_cont, false);
+	lv_cont_set_layout(l_cont, LV_LAYOUT_OFF);
+	lv_obj_set_opa_scale(l_cont, LV_OPA_40);
+
+	lv_obj_t *label_sep = lv_label_create(sw_h2, NULL);
+	lv_label_set_static_text(label_sep, "");
+
+	lv_obj_t *label_txt = lv_label_create(sw_h2, NULL);
+	lv_label_set_static_text(label_txt, SYMBOL_SETTINGS" DRAM");
+	lv_obj_set_style(label_txt, th->label.prim);
+	lv_obj_align(label_txt, label_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, -LV_DPI / 5 + 3);
+
+	lv_obj_t *line_sep = lv_line_create(sw_h2, NULL);
+	static const lv_point_t line_pp[] = { {0, 0}, { LV_HOR_RES - (LV_DPI - (LV_DPI / 4)) * 2, 0} };
+	lv_line_set_points(line_sep, line_pp, 2);
+	lv_line_set_style(line_sep, th->line.decor);
+	lv_obj_align(line_sep, label_txt, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);
+
+	lv_obj_t *label_train = lv_label_create(l_cont, NULL);
+	lv_label_set_static_text(label_train, SYMBOL_REFRESH" DRAM Training  ");
+	lv_obj_set_style(label_train, th->label.prim);
+	lv_obj_align(label_train, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4);
+
+	lv_obj_t *ddlist = lv_ddlist_create(l_cont, NULL);
+	lv_obj_set_top(ddlist, true);
+	lv_ddlist_set_draw_arrow(ddlist, true);
+	// Trailing spaces reserve room so the widest option doesn't clip into the arrow.
+	lv_ddlist_set_options(ddlist,
+		"Disabled       \n"
+		"Enabled\n"
+		"Safe Mode");
+	lv_ddlist_set_selected(ddlist, n_cfg.mariko_train_safe_mode);
+	lv_obj_align(ddlist, label_train, LV_ALIGN_OUT_RIGHT_MID, LV_DPI * 2 / 3, 0);
+
+	// Mariko-only: Erista never trains DRAM here, so lock the control.
+	if (h_cfg.t210b01)
+		lv_ddlist_set_action(ddlist, _mariko_train_mode_action);
+	else
+		lv_obj_set_click(ddlist, false);
+
+	lv_obj_t *label_txt2 = lv_label_create(l_cont, NULL);
+	lv_label_set_recolor(label_txt2, true);
+	lv_label_set_static_text(label_txt2,
+		"Trains DRAM to 1600 MHz on Nyx boot. #FF8000 Mariko only.#\n"
+		"#FF8000 Safe Mode:# #C7EA46 slower boot but more stable on consoles#\n"
+		"#C7EA46 that glitch or fail to boot with normal training.#");
+	lv_obj_set_style(label_txt2, &hint_small_style);
+	lv_obj_align(label_txt2, label_train, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 4);
+
+	lv_obj_set_top(l_cont, true);
+	lv_obj_set_parent(ddlist, l_cont);
+	lv_obj_set_top(ddlist, true);
+}
+
+void create_tab_options(lv_theme_t *th, lv_obj_t *parent)
+{
+	lv_obj_t *tv = lv_tabview_create(parent, NULL);
+
+	lv_obj_set_size(tv, LV_HOR_RES, 572);
+
+	static lv_style_t tabview_style;
+	lv_style_copy(&tabview_style, th->tabview.btn.rel);
+	tabview_style.body.padding.ver = LV_DPI / 8;
+
+	lv_tabview_set_style(tv, LV_TABVIEW_STYLE_BTN_REL, &tabview_style);
+	if (hekate_bg)
+	{
+		lv_tabview_set_style(tv, LV_TABVIEW_STYLE_BTN_PR, &tabview_btn_pr);
+		lv_tabview_set_style(tv, LV_TABVIEW_STYLE_BTN_TGL_PR, &tabview_btn_tgl_pr);
+	}
+
+	lv_tabview_set_sliding(tv, false);
+	lv_tabview_set_btns_pos(tv, LV_TABVIEW_BTNS_POS_BOTTOM);
+
+	lv_obj_t *tab1 = lv_tabview_add_tab(tv, "General");
+	lv_obj_t *tab2 = lv_tabview_add_tab(tv, "Advanced");
+
+	lv_obj_t *line_sep = lv_line_create(tv, NULL);
+	static const lv_point_t line_pp[] = { {0, 0}, { 0, LV_DPI / 4} };
+	lv_line_set_points(line_sep, line_pp, 2);
+	lv_line_set_style(line_sep, lv_theme_get_current()->line.decor);
+	lv_obj_align(line_sep, tv, LV_ALIGN_IN_BOTTOM_MID, -1, -LV_DPI * 2 / 12);
+
+	_create_tab_options_general(th, tab1);
+	_create_tab_options_advanced(th, tab2);
 }

@@ -451,12 +451,13 @@ void nyx_init_load_res()
     if (h_cfg.t210b01 && n_cfg.mariko_train_safe_mode != MARIKO_TRAIN_MODE_DISABLE) {
 		// Safer but slower
 		if (n_cfg.mariko_train_safe_mode == MARIKO_TRAIN_MODE_SAFE) {
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < 3; i++) {
                 MarikoTrainMemory(&trained);
-                msleep(1500);
+                msleep(50);
                 RestoreMemoryClockRateMariko();
+                msleep(50);
             }
-            msleep(500);
+            msleep(100);
         }
 
         MarikoTrainMemory(&trained);
