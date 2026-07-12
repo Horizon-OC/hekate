@@ -454,16 +454,16 @@ static lv_res_t _l4t_field_btn_action(lv_obj_t *btn) {
   switch (idx) {
   case L4T_IDX_FREQ:
     strcpy(hint, "RAM Frequency in #C7EA46 kHz# (e.g. #FF8000 2131200#).\n"
-                 "#FF8000 0# = Auto. 1600 - 3200MHz.");
+                 "#FF8000 0# = Auto.");
     maxlen = 7;
     break;
   case L4T_IDX_VDD2:
     strcpy(hint,
-           "#C7EA46 VDD2# voltage in mV. #FF8000 0# = Auto. 1050-1175mV.");
+           "#C7EA46 VDD2# voltage in mV. #FF8000 0# = Auto.");
     maxlen = 4;
     break;
   case L4T_IDX_VDDQ:
-    strcpy(hint, "#C7EA46 VDDQ# voltage in mV. #FF8000 0# = Auto. 550-650mV.");
+    strcpy(hint, "#C7EA46 VDDQ# voltage in mV. #FF8000 0# = Auto.");
     maxlen = 4;
     break;
   default:
