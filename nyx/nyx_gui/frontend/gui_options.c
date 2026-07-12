@@ -1571,7 +1571,7 @@ static lv_res_t _action_win_nyx_options_passwd(lv_obj_t *btn)
 	lv_mbox_set_recolor_text(mbox, true);
 	lv_obj_set_width(mbox, LV_HOR_RES / 2);
 
-	lv_mbox_set_text(mbox, "Set a (#FF8000 max 8 digit#) password\nto lock hekate on boot.\nThe password is stored in plain-text\non the microSD card!");
+	lv_mbox_set_text(mbox, "Set a (#FF8000 max 8 digit#) password\nto lock hocate on boot.\nThe password is stored in plain-text\non the microSD card!");
 
 	set_pw_area = lv_ta_create(mbox, NULL);
 	lv_ta_set_one_line(set_pw_area, true);
