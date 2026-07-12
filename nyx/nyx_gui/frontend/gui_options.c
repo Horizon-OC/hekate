@@ -1992,7 +1992,7 @@ static void _create_tab_options_general(lv_theme_t *th, lv_obj_t *parent)
 	lv_obj_set_top(ddlist, true);
 }
 
-static const u8 bpmp_clock_opt_vals[] = { 5, 4, 3, 2, 1, 6 };
+static const u8 bpmp_clock_opt_vals[] = { 5, 4, 3, 2, 1, 6, 7, 8, 9, 10, 11, 12 };
 
 static lv_res_t _bpmp_clock_action(lv_obj_t *ddlist)
 {
@@ -2095,6 +2095,8 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 
 	lv_obj_t *ddlist_bpmp = lv_ddlist_create(h2, NULL);
 	lv_ddlist_set_draw_arrow(ddlist_bpmp, true);
+	// Cap the open height so the long list scrolls instead of running off-screen.
+	lv_ddlist_set_fix_height(ddlist_bpmp, LV_DPI * 3);
 	// Widen the box to prevent clipping
 	lv_ddlist_set_options(ddlist_bpmp,
 		"408 MHz (Normal)   \n"
@@ -2102,7 +2104,13 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 		"563 MHz (High2)   \n"
 		"576 MHz (Super)   \n"
 		"589 MHz (Hyper)   \n"
-		"608 MHz (Unsafe!)   ");
+		"608 MHz (Unsafe!)   \n"
+		"640 MHz (Unsafe!)   \n"
+		"672 MHz (Unsafe!)   \n"
+		"704 MHz (Unsafe!)   \n"
+		"729 MHz (Danger!)   \n"
+		"768 MHz (Danger!)   \n"
+		"800 MHz (Danger!)   ");
 
 	// Select the clock
 	u32 bpmp_sel = 4;
@@ -2131,7 +2139,7 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 	lv_label_set_recolor(label_bpmp_hint, true);
 	lv_label_set_static_text(label_bpmp_hint,
 		"BPMP clock applied on Nyx boot.\n"
-		"#FF8000 608 MHz may be unstable, use at your own risk.#");
+		"#FF8000 608 MHz+ may be unstable, use at your own risk.#");
 	lv_obj_set_style(label_bpmp_hint, &hint_small_style);
 	lv_obj_align(label_bpmp_hint, label_bpmp, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 2);
 
