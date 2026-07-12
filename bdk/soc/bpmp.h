@@ -51,12 +51,6 @@ typedef enum
 	BPMP_CLK_SUPER_BOOST, // 576MHz 41% - 144MHz APB.
 	BPMP_CLK_HYPER_BOOST, // 589MHz 44% - 147MHz APB.
 	BPMP_CLK_DEV_BOOST,   // 608MHz 49% - 152MHz APB. Nyx BPMP OC option only.
-	BPMP_CLK_640_BOOST,   // 640MHz 57% - 160MHz APB. Nyx BPMP OC option only.
-	BPMP_CLK_672_BOOST,   // 672MHz 65% - 168MHz APB. Nyx BPMP OC option only.
-	BPMP_CLK_704_BOOST,   // 704MHz 73% - 176MHz APB. Nyx BPMP OC option only.
-	BPMP_CLK_729_BOOST,   // 730MHz 79% - 182MHz APB. Nyx BPMP OC option only.
-	BPMP_CLK_768_BOOST,   // 768MHz 88% - 192MHz APB. Nyx BPMP OC option only.
-	BPMP_CLK_800_BOOST,   // 800MHz 96% - 200MHz APB. Nyx BPMP OC option only.
 	BPMP_CLK_NUM
 } bpmp_freq_t;
 
