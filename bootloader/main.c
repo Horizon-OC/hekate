@@ -1427,7 +1427,7 @@ ment_t ment_top[] = {
 	MDEF_END()
 };
 
-menu_t menu_top = { ment_top, "hekate v6.5.3", 0, 0 };
+menu_t menu_top = { ment_top, "hocate v2.5.0", 0, 0 };
 
 extern void pivot_stack(u32 stack_top);
 
@@ -1447,7 +1447,7 @@ void ipl_main()
 	heap_init((void *)IPL_HEAP_START);
 
 #ifdef DEBUG_UART_PORT
-	uart_send(DEBUG_UART_PORT, (u8 *)"hekate: Hello!\n", 15);
+	uart_send(DEBUG_UART_PORT, (u8 *)"hocate: Hello!\n", 15);
 	uart_wait_xfer(DEBUG_UART_PORT, UART_TX_IDLE);
 #endif
 
