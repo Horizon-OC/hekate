@@ -496,6 +496,9 @@ void nyx_init_load_res()
 	case 4:
 		bpmp_clk_rate_set(BPMP_CLK_BIN3_BOOST);
 		break;
+	case 6:
+		bpmp_clk_rate_set(BPMP_CLK_DEV_BOOST);
+		break;
 	case 5:
 	default:
 		bpmp_clk_rate_set(BPMP_CLK_NORMAL);

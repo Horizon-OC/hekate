@@ -1487,6 +1487,9 @@ static lv_res_t _action_win_nyx_options_close(lv_obj_t *btn)
 	lv_obj_set_opa_scale(status_bar.mid, LV_OPA_0);
 	lv_obj_set_click(status_bar.mid, false);
 
+	lv_obj_set_hidden(status_bar.clocks, false);
+	lv_obj_set_hidden(status_bar.clocks_symbol, false);
+
 	lv_res_t res = nyx_win_close_action(btn);
 
 	_check_nyx_changes();
@@ -1612,6 +1615,9 @@ lv_res_t create_win_nyx_options(lv_obj_t *parrent_btn)
 	lv_theme_t *th = lv_theme_get_current();
 
 	lv_obj_t *win = nyx_create_standard_window(SYMBOL_HOME" Nyx Settings", _action_win_nyx_options_close);
+
+	lv_obj_set_hidden(status_bar.clocks, true);
+	lv_obj_set_hidden(status_bar.clocks_symbol, true);
 
 	lv_win_add_btn(win, NULL, SYMBOL_KEY" Password", _action_win_nyx_options_passwd);
 
@@ -1986,9 +1992,23 @@ static void _create_tab_options_general(lv_theme_t *th, lv_obj_t *parent)
 	lv_obj_set_top(ddlist, true);
 }
 
+static const u8 bpmp_clock_opt_vals[] = { 5, 4, 3, 2, 1, 6 };
+
+static lv_res_t _bpmp_clock_action(lv_obj_t *ddlist)
+{
+	u32 idx = lv_ddlist_get_selected(ddlist);
+	if (idx >= sizeof(bpmp_clock_opt_vals))
+		idx = 0;
+
+	n_cfg.bpmp_clock = bpmp_clock_opt_vals[idx];
+	create_nyx_config_entry(false);
+
+	return LV_RES_OK;
+}
+
 static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 {
-	lv_page_set_scrl_layout(parent, LV_LAYOUT_PRETTY);
+	lv_page_set_scrl_layout(parent, LV_LAYOUT_OFF);
 
 	static lv_style_t h_style;
 	lv_style_copy(&h_style, &lv_style_transp);
@@ -1996,13 +2016,13 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 	h_style.body.padding.hor = LV_DPI - (LV_DPI / 4);
 	h_style.body.padding.ver = LV_DPI / 6;
 
-	// Create DRAM container.
 	lv_obj_t *h1 = lv_cont_create(parent, NULL);
 	lv_cont_set_style(h1, &h_style);
 	lv_cont_set_fit(h1, false, true);
 	lv_obj_set_width(h1, (LV_HOR_RES / 9) * 4);
 	lv_obj_set_click(h1, false);
 	lv_cont_set_layout(h1, LV_LAYOUT_OFF);
+	lv_obj_align(h1, NULL, LV_ALIGN_IN_TOP_LEFT, LV_DPI / 2, 0);
 
 	lv_obj_t *label_sep = lv_label_create(h1, NULL);
 	lv_label_set_static_text(label_sep, "");
@@ -2045,6 +2065,77 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 		lv_obj_set_style(label_txt2, &hint_small_style);
 		lv_obj_align(label_txt2, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4);
 	}
+
+	// Create BPMP container
+	lv_obj_t *h2 = lv_cont_create(parent, NULL);
+	lv_cont_set_style(h2, &h_style);
+	lv_cont_set_fit(h2, false, true);
+	lv_obj_set_width(h2, (LV_HOR_RES / 9) * 4);
+	lv_obj_set_click(h2, false);
+	lv_cont_set_layout(h2, LV_LAYOUT_OFF);
+
+	label_sep = lv_label_create(h2, NULL);
+	lv_label_set_static_text(label_sep, "");
+
+	label_txt = lv_label_create(h2, NULL);
+	lv_label_set_static_text(label_txt, "BPMP");
+	lv_obj_set_style(label_txt, th->label.prim);
+	lv_obj_align(label_txt, label_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, -LV_DPI * 3 / 10);
+
+	line_sep = lv_line_create(h2, NULL);
+	lv_line_set_points(line_sep, line_pp, 2);
+	lv_line_set_style(line_sep, th->line.decor);
+	lv_obj_align(line_sep, label_txt, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);
+
+	// Dropdown
+	lv_obj_t *label_bpmp = lv_label_create(h2, NULL);
+	lv_label_set_static_text(label_bpmp, SYMBOL_CHIP" BPMP Clock");
+	lv_obj_set_style(label_bpmp, th->label.prim);
+	lv_obj_align(label_bpmp, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 4);
+
+	lv_obj_t *ddlist_bpmp = lv_ddlist_create(h2, NULL);
+	lv_ddlist_set_draw_arrow(ddlist_bpmp, true);
+	// Widen the box to prevent clipping
+	lv_ddlist_set_options(ddlist_bpmp,
+		"408 MHz (Normal)   \n"
+		"544 MHz (High)   \n"
+		"563 MHz (High2)   \n"
+		"576 MHz (Super)   \n"
+		"589 MHz (Hyper)   \n"
+		"608 MHz (Unsafe!)   ");
+
+	// Select the clock
+	u32 bpmp_sel = 4;
+	for (u32 i = 0; i < sizeof(bpmp_clock_opt_vals); i++)
+	{
+		if (bpmp_clock_opt_vals[i] == n_cfg.bpmp_clock)
+		{
+			bpmp_sel = i;
+			break;
+		}
+	}
+	lv_ddlist_set_selected(ddlist_bpmp, bpmp_sel);
+	lv_obj_align(ddlist_bpmp, label_bpmp, LV_ALIGN_OUT_RIGHT_MID, LV_DPI / 4, 0);
+	lv_ddlist_set_action(ddlist_bpmp, _bpmp_clock_action);
+	lv_obj_set_top(ddlist_bpmp, true);
+
+	if (hekate_bg)
+	{
+		lv_ddlist_set_style(ddlist_bpmp, LV_DDLIST_STYLE_BG, &ddlist_transp_bg);
+		lv_ddlist_set_style(ddlist_bpmp, LV_DDLIST_STYLE_BGO, &ddlist_transp_bg);
+		lv_ddlist_set_style(ddlist_bpmp, LV_DDLIST_STYLE_PR, &ddlist_transp_sel);
+		lv_ddlist_set_style(ddlist_bpmp, LV_DDLIST_STYLE_SEL, &ddlist_transp_sel);
+	}
+
+	lv_obj_t *label_bpmp_hint = lv_label_create(h2, NULL);
+	lv_label_set_recolor(label_bpmp_hint, true);
+	lv_label_set_static_text(label_bpmp_hint,
+		"BPMP clock applied on Nyx boot.\n"
+		"#FF8000 608 MHz may be unstable, use at your own risk.#");
+	lv_obj_set_style(label_bpmp_hint, &hint_small_style);
+	lv_obj_align(label_bpmp_hint, label_bpmp, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 2);
+
+	lv_obj_align(h2, h1, LV_ALIGN_OUT_RIGHT_TOP, LV_DPI / 2, 0);
 }
 
 void create_tab_options(lv_theme_t *th, lv_obj_t *parent)

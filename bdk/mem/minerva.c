@@ -26,7 +26,7 @@
 #include <soc/hw_init.h>
 #include <soc/t210.h>
 
-#define FREQ_NO_TABLE_MAX FREQ_408
+#define FREQ_NO_TABLE_MAX FREQ_204 /*408*/ // Stock hekate sets at 408MHz (2x clockspeed from rating)
 
 #define TABLE_FREQ_KHZ_OFFSET        0x40
 #define TABLE_LA_REGS_T210_OFFSET    0x1284
@@ -103,7 +103,7 @@ int minerva_init(minerva_str_t *mtc_str)
 	{
 		mtc_cfg->train_mode = OP_SWITCH;
 		mtc_cfg->rate_from = FREQ_204;
-		mtc_cfg->rate_to = FREQ_204;
+		mtc_cfg->rate_to = FREQ_NO_TABLE_MAX;
 		mtc_call(mtc_cfg, NULL);
 
 		return 0;
