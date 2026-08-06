@@ -202,6 +202,8 @@ static void _load_saved_configuration()
 					h_cfg.autonogc    = atoi(kv->val);
 				else if (!strcmp("updater2p",   kv->key))
 					h_cfg.updater2p   = atoi(kv->val);
+				else if (!strcmp("display_refresh_rate", kv->key))
+					h_cfg.display_refresh_rate = atoi(kv->val);
 				else if (!strcmp("bootprotect", kv->key))
 					h_cfg.bootprotect = atoi(kv->val);
 			}
@@ -211,6 +213,8 @@ static void _load_saved_configuration()
 	}
 
 	ini_free(&ini_sections);
+
+	display_set_refresh_rate(h_cfg.display_refresh_rate);
 
 skip_main_cfg_parse:
 	if (ini_parse(&ini_nyx_sections, "bootloader/nyx.ini", false))

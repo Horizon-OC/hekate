@@ -32,11 +32,124 @@
 
 #include "di.inl"
 
+#define DI_H_TOTAL       1000u  // 72 sync + 72 back + 720 active + 136 front.
+#define DI_V_TOTAL       1300u  //  1 sync +  9 back + 1280 active + 10 front.
+#define DI_DSI_LANES        4u
+#define DI_SHIFT_CLK_DIV    3u  // SHIFT_CLK_DIVIDER(4) is divide by 3.
+#define DI_PLLD_DIVP        1u
+#define DI_OSC_FREQ  38400000u
+
+#define DI_LANE_BYTE_CLK_60HZ 58500000u
+
 static bool _nx_aula      = false;
 static u32  _panel_id     = 0;
 static u32  _panel_id_raw = 0;
 
 static void _display_panel_and_hw_end(bool no_panel_deinit);
+
+static u32 _di_refresh_rate = 60;
+
+void display_set_refresh_rate(u32 hz)
+{
+	_di_refresh_rate = (hz >= DI_REFRESH_RATE_MIN && hz <= DI_REFRESH_RATE_MAX) ? hz : 60;
+}
+
+u32 display_get_refresh_rate()
+{
+	return _di_refresh_rate;
+}
+
+
+static u32 _di_div_round(u64 value, u64 divisor)
+{
+	return (u32)((value + (divisor / 2)) / divisor);
+}
+
+
+static u32 _di_frame_us(u32 us_at_60hz)
+{
+	return (u32)(((u64)us_at_60hz * 60u) / _di_refresh_rate);
+}
+
+
+static u32 _di_timing_field(u64 value_ps, u64 period_ps, u32 hwinc)
+{
+	u64 cycles = (value_ps + (period_ps / 2)) / period_ps;
+	u64 field  = (cycles > hwinc) ? (cycles - hwinc) : 0;
+
+	return (field > 0xFF) ? 0xFF : (u32)field;
+}
+
+
+static void _display_dsi_set_video_clock(bool tegra_t210)
+{
+	const u32 rate = _di_refresh_rate;
+
+	const u32 pixel_clk = DI_H_TOTAL * DI_V_TOTAL * rate;
+	const u32 byte_clk  = pixel_clk * DI_SHIFT_CLK_DIV;
+
+	const u32 n8192 = (u32)(((u64)byte_clk * (16384u << DI_PLLD_DIVP)) / DI_OSC_FREQ);
+	const u32 divn  = n8192 >> 13;
+	const u16 sdm   = (u16)(s16)((s32)(n8192 & 0x1FFF) - 4096);
+
+	clock_enable_plld_sdm(DI_PLLD_DIVP, divn, sdm, tegra_t210);
+
+	const u32 lane_byte_clk = (u32)(((u64)pixel_clk * DI_SHIFT_CLK_DIV) / DI_DSI_LANES);
+	const u64 period_ps     = _di_div_round(1000000000000ull, lane_byte_clk);
+	const u64 ui_ps         = _di_div_round(period_ps, 8);
+
+	const u64 clkpost    = 70000 + 52 * ui_ps;
+	const u64 clkprepare = 65000;
+	const u64 clktrail   = 80000;
+	const u64 clkzero    = 260000;
+	const u64 hsexit     = 120000;
+	const u64 hsprepare  = 65000 + 5 * ui_ps;
+	const u64 hszero     = 145000 + 5 * ui_ps;
+	const u64 lpx        = 100000; // tlpx   100 ns
+	const u64 tago       = 360000; // tago   360 ns
+	const u64 tasure     = 180000; // tasure 180 ns
+	const u64 taget      = 450000; // taget  450 ns
+
+	const u64 hstrail_a = 8 * ui_ps;
+	const u64 hstrail_b = 60000 + 4 * ui_ps;
+	const u64 hstrail   = (hstrail_a > hstrail_b) ? hstrail_a : hstrail_b;
+	u32 hstrail_field   = _di_timing_field(hstrail, period_ps, 0) + 3;
+
+	if (hstrail_field > 0xFF)
+		hstrail_field = 0xFF;
+
+	const u32 link_khz    = byte_clk / 1000;
+	const u32 half_period = 1000000000u / (link_khz * 2u);
+	const u32 wakeup      = half_period ? (((1000000000u / (half_period << 3)) >> 9) & 0xFF) : 0;
+
+	DSI(DSI_PHY_TIMING_0) = (_di_timing_field(hsexit, period_ps, 1)    << 24) |
+	                        (hstrail_field                             << 16) |
+	                        (_di_timing_field(hszero, period_ps, 3)    <<  8) |
+	                        (_di_timing_field(hsprepare, period_ps, 1));
+
+	DSI(DSI_PHY_TIMING_1) = (_di_timing_field(clktrail, period_ps, 1)  << 24) |
+	                        (_di_timing_field(clkpost, period_ps, 1)   << 16) |
+	                        (_di_timing_field(clkzero, period_ps, 1)   <<  8) |
+	                        (_di_timing_field(lpx, period_ps, 1));
+
+	DSI(DSI_PHY_TIMING_2) = (_di_timing_field(clkprepare, period_ps, 1) << 16) |
+	                        (1u                                         <<  8) |
+	                        wakeup;
+
+	DSI(DSI_BTA_TIMING)   = (_di_timing_field(taget, period_ps, 1)     << 16) |
+	                        (_di_timing_field(tasure, period_ps, 1)    <<  8) |
+	                        (_di_timing_field(tago, period_ps, 1));
+
+	u32 htx = (lane_byte_clk / rate) / 512 + 720;
+	if (htx > 0xFFFF)
+		htx = 0xFFFF;
+	DSI(DSI_TIMEOUT_0) = DSI_TIMEOUT_LRX(0x2000) | DSI_TIMEOUT_HTX(htx);
+
+	u32 pr = _di_div_round((u64)0x5A2F * lane_byte_clk, DI_LANE_BYTE_CLK_60HZ);
+	if (pr > 0xFFFF)
+		pr = 0xFFFF;
+	DSI(DSI_TIMEOUT_1) = DSI_TIMEOUT_PR(pr) | DSI_TIMEOUT_TA(0x2000);
+}
 
 void display_enable_interrupt(u32 intr)
 {
@@ -56,6 +169,86 @@ void display_wait_interrupt(u32 intr)
 	// Interrupts are masked. Poll status register for checking if fired.
 	while (!(DISPLAY_A(DC_CMD_INT_STATUS) & intr))
 		;
+}
+
+static bool _di_wait_frame_end(u32 timeout_us)
+{
+	DISPLAY_A(DC_CMD_INT_STATUS) = DC_CMD_INT_FRAME_END_INT;
+
+	const u32 start = get_tmr_us();
+
+	while (!(DISPLAY_A(DC_CMD_INT_STATUS) & DC_CMD_INT_FRAME_END_INT))
+	{
+		if ((get_tmr_us() - start) > timeout_us)
+			return false;
+	}
+
+	return true;
+}
+
+void display_measure_frames(u32 frames, display_frame_stats_t *stats)
+{
+	if (!stats)
+		return;
+
+	memset(stats, 0, sizeof(*stats));
+
+	if (!frames)
+		return;
+
+	const u32 nominal_us = 1000000u / _di_refresh_rate;
+	const u32 late_us    = nominal_us + (nominal_us / 2);
+
+	const u32 timeout_us = (nominal_us * 4) + 1000;
+
+	stats->nominal_us = nominal_us;
+	stats->min_us     = ~0u;
+
+	const u32 int_enable = DISPLAY_A(DC_CMD_INT_ENABLE);
+	display_enable_interrupt(DC_CMD_INT_FRAME_END_INT);
+
+	if (!_di_wait_frame_end(timeout_us))
+	{
+		stats->timed_out = true;
+		DISPLAY_A(DC_CMD_INT_ENABLE) = int_enable;
+
+		return;
+	}
+
+	const u32 start = get_tmr_us();
+	u32 prev = start;
+
+	for (u32 i = 0; i < frames; i++)
+	{
+		if (!_di_wait_frame_end(timeout_us))
+		{
+			stats->timed_out = true;
+			break;
+		}
+
+		const u32 now      = get_tmr_us();
+		const u32 interval = now - prev;
+		prev = now;
+
+		if (interval < stats->min_us)
+			stats->min_us = interval;
+		if (interval > stats->max_us)
+			stats->max_us = interval;
+		if (interval >= late_us)
+			stats->late++;
+
+		stats->frames++;
+	}
+
+	DISPLAY_A(DC_CMD_INT_ENABLE) = int_enable;
+
+	stats->elapsed_us = prev - start;
+
+	if (!stats->frames)
+		stats->min_us = 0;
+
+	if (stats->elapsed_us)
+		stats->rate_mhz = (u32)(((u64)stats->frames * 1000000000ull) / stats->elapsed_us);
 }
 
 static void _display_dsi_wait(u32 timeout, u32 off, u32 mask)
@@ -549,13 +742,19 @@ void display_init()
 	_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_SET_DISPLAY_ON, 20000);
 
 	// Switch to DSI HS mode.
-	// DIVM: 1, DIVN: 24, DIVP: 1. PLLD_OUT: 468.0 MHz, PLLD_OUT0 (DSI-BCLK): 234.0 MHz. (PCLK: 78 MHz)
-	clock_enable_plld(1, 24, false, tegra_t210);
+	// At 60 Hz: DIVM: 1, DIVN: 24, DIVP: 1. PLLD_OUT: 468.0 MHz, PLLD_OUT0 (DSI-BCLK): 234.0 MHz. (PCLK: 78 MHz)
 
 	// Set HS PHY timing and finalize DSI packet sequence configuration.
 	reg_write_array((vu32 *)DSI_BASE, _di_dsi_seq_pkt_video_non_burst_no_eot_config, ARRAY_SIZE(_di_dsi_seq_pkt_video_non_burst_no_eot_config));
 
-	// Set 1-by-1 pixel/clock and pixel clock to 234 / 3 = 78 MHz. For 60 Hz refresh rate.
+	/*
+	 * PLLD and the D-PHY timings for the configured refresh rate, over the 60 Hz
+	 * constants just written. At 60 Hz every value is identical to them, so this
+	 * is a no-op there by construction rather than by a branch.
+	 */
+	_display_dsi_set_video_clock(tegra_t210);
+
+	// Set 1-by-1 pixel/clock. Pixel clock is PLLD_OUT0 / 3, i.e. 78 MHz at 60 Hz.
 	DISPLAY_A(DC_DISP_DISP_CLOCK_CONTROL) = PIXEL_CLK_DIVIDER_PCD1 | SHIFT_CLK_DIVIDER(4); // div3. Default: div4.
 
 	// Set DSI mode to HOST.
@@ -694,7 +893,7 @@ static void _display_panel_and_hw_end(bool no_panel_deinit)
 
 	// Wait for 5 frames (HOST1X_CH0_SYNC_SYNCPT_9).
 	// Not here. Wait for 1 frame + transmission manually.
-	usleep((_panel_id == PANEL_SAM_AMS699VC01) ? (15933 + 195) : (16666 + 230));
+	usleep(_di_frame_us((_panel_id == PANEL_SAM_AMS699VC01) ? (15933 + 195) : (16666 + 230)));
 
 	// Propagate changes to all register buffers and disable host cmd packets during video.
 	DISPLAY_A(DC_CMD_STATE_ACCESS) = READ_MUX_ACTIVE | WRITE_MUX_ACTIVE;
@@ -842,7 +1041,7 @@ void display_color_screen(u32 color)
 	// Arm and activate changes.
 	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | WIN_A_UPDATE |  WIN_B_UPDATE  | WIN_C_UPDATE  | WIN_D_UPDATE;
 	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | WIN_A_ACT_REQ | WIN_B_ACT_REQ | WIN_C_ACT_REQ | WIN_D_ACT_REQ;
-	usleep(35000); // Wait 2 frames. No need on Aula.
+	usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
 
 	if (_panel_id != PANEL_SAM_AMS699VC01)
 		display_backlight(true);
@@ -857,7 +1056,7 @@ u32 *display_init_window_a_pitch()
 
 	// This configures the framebuffer @ IPL_FB_ADDRESS with a resolution of 720x1280 (line stride 720).
 	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_pitch, ARRAY_SIZE(_di_winA_pitch));
-	//usleep(35000); // Wait 2 frames. No need on Aula.
+	//usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
 
 	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }
@@ -866,10 +1065,10 @@ u32 *display_init_window_a_pitch_vic()
 {
 	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 720x1280 (line stride 720).
 	if (_panel_id != PANEL_SAM_AMS699VC01)
-		usleep(8000); // Wait half frame for PWM to apply.
+		usleep(_di_frame_us(8000)); // Wait half frame for PWM to apply.
 	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_pitch_vic, ARRAY_SIZE(_di_winA_pitch_vic));
 	if (_panel_id != PANEL_SAM_AMS699VC01)
-		usleep(35000); // Wait 2 frames.
+		usleep(_di_frame_us(35000)); // Wait 2 frames.
 
 	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }
@@ -878,7 +1077,7 @@ u32 *display_init_window_a_pitch_inv()
 {
 	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 720x1280 (line stride 720).
 	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_pitch_inv, ARRAY_SIZE(_di_winA_pitch_inv));
-	usleep(35000); // Wait 2 frames. No need on Aula.
+	usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
 
 	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }
@@ -887,7 +1086,7 @@ u32 *display_init_window_a_block()
 {
 	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 720x1280.
 	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_block, ARRAY_SIZE(_di_winA_block));
-	usleep(35000); // Wait 2 frames. No need on Aula.
+	usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
 
 	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }

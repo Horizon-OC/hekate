@@ -869,6 +869,26 @@ void display_init();
 void display_backlight_pwm_init();
 void display_end();
 
+#define DI_REFRESH_RATE_MIN 45
+#define DI_REFRESH_RATE_MAX 65
+
+void display_set_refresh_rate(u32 hz);
+u32  display_get_refresh_rate();
+
+typedef struct _display_frame_stats_t
+{
+	u32 frames;
+	u32 elapsed_us;
+	u32 rate_mhz;
+	u32 nominal_us;
+	u32 min_us;
+	u32 max_us;
+	u32 late;
+	bool timed_out;
+} display_frame_stats_t;
+
+void display_measure_frames(u32 frames, display_frame_stats_t *stats);
+
 /*! Interrupt management. */
 void display_enable_interrupt(u32 intr);
 void display_disable_interrupt(u32 intr);

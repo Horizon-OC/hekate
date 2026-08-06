@@ -33,6 +33,7 @@ typedef struct _hekate_config
 	u32 autonogc;
 	u32 updater2p;
 	u32 bootprotect;
+	u32 display_refresh_rate;
 	// Global temporary config.
 	bool t210b01;
 	bool devmode;

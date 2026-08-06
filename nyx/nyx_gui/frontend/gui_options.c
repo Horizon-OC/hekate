@@ -1455,6 +1455,154 @@ static lv_res_t _action_nyx_options_save(lv_obj_t *btns, const char * txt)
 	return LV_RES_INV;
 }
 
+static lv_res_t _display_timing_action(lv_obj_t *btn)
+{
+	lv_obj_t *dark_bg = lv_obj_create(lv_scr_act(), NULL);
+	lv_obj_set_style(dark_bg, &mbox_darken);
+	lv_obj_set_size(dark_bg, LV_HOR_RES, LV_VER_RES);
+
+	static const char *mbox_btn_map[] = { "\251", "\222OK", "\251", "" };
+	lv_obj_t *mbox = lv_mbox_create(dark_bg, NULL);
+	lv_mbox_set_recolor_text(mbox, true);
+	lv_obj_set_width(mbox, LV_HOR_RES / 9 * 3);
+
+	const u32 rate   = display_get_refresh_rate();
+	const u32 frames = 120;
+
+	lv_mbox_set_text(mbox, "#FF8000 Display Timing#\n\nMeasuring...");
+	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_set_top(mbox, true);
+
+	manual_system_maintenance(true);
+
+	display_frame_stats_t stats;
+	display_measure_frames(frames, &stats);
+
+	char *txt = malloc(SZ_4K);
+
+	s_printf(txt,
+		"#FF8000 Display Timing#\n\n"
+		"Set: #C7EA46 %d Hz# - %d kHz pclk\n"
+		"Measured: #C7EA46 %d.%03d Hz# (%d/%d)\n"
+		"Frame: %d us nominal\n"
+		"%d min / %d max\n",
+		rate, (1000 * 1300 * rate) / 1000,
+		stats.rate_mhz / 1000, stats.rate_mhz % 1000,
+		stats.frames, frames,
+		stats.nominal_us, stats.min_us, stats.max_us);
+
+	if (stats.timed_out)
+		s_printf(txt + strlen(txt), "\n#FF8000 Frames stopped.#");
+	else if (stats.late)
+		s_printf(txt + strlen(txt), "\n#FF8000 Late: %d#", stats.late);
+	else
+		s_printf(txt + strlen(txt), "\n#C7EA46 No late frames.#");
+
+	lv_mbox_set_text(mbox, txt);
+	free(txt);
+
+	lv_mbox_add_btns(mbox, mbox_btn_map, nyx_mbox_action);
+	lv_obj_align(mbox, NULL, LV_ALIGN_CENTER, 0, 0);
+	lv_obj_set_top(mbox, true);
+
+	return LV_RES_OK;
+}
+
+static lv_obj_t *display_rate_lbl;
+static lv_obj_t *display_rate_ta;
+
+static void _display_rate_topbar_hidden(bool hidden)
+{
+	lv_obj_set_hidden(status_bar.bar_bg, hidden);
+	lv_obj_set_hidden(status_bar.line_top, hidden);
+	lv_obj_set_hidden(status_bar.line_bottom, hidden);
+}
+
+static void _display_rate_update_label()
+{
+	char txt[32];
+	s_printf(txt, SYMBOL_EDIT" %d Hz", h_cfg.display_refresh_rate);
+	lv_label_set_text(display_rate_lbl, txt);
+}
+
+static lv_res_t _display_rate_kb_ok_action(lv_obj_t *kb)
+{
+	u32 rate = atoi(lv_ta_get_text(display_rate_ta));
+
+	if (rate < DI_REFRESH_RATE_MIN)
+		rate = DI_REFRESH_RATE_MIN;
+	else if (rate > DI_REFRESH_RATE_MAX)
+		rate = DI_REFRESH_RATE_MAX;
+
+	h_cfg.display_refresh_rate = rate;
+	_display_rate_update_label();
+
+	if (!sd_mount())
+	{
+		create_config_entry();
+		sd_unmount();
+	}
+
+	lv_obj_del(lv_obj_get_parent(kb));
+	_display_rate_topbar_hidden(false);
+
+	return LV_RES_INV;
+}
+
+static lv_res_t _display_rate_kb_close_action(lv_obj_t *kb)
+{
+	lv_obj_del(lv_obj_get_parent(kb));
+	_display_rate_topbar_hidden(false);
+
+	return LV_RES_INV;
+}
+
+static lv_res_t _display_rate_btn_action(lv_obj_t *btn)
+{
+	_display_rate_topbar_hidden(true);
+
+	lv_obj_t *dark_bg = lv_obj_create(lv_scr_act(), NULL);
+	lv_obj_set_style(dark_bg, &mbox_darken);
+	lv_obj_set_size(dark_bg, LV_HOR_RES, LV_VER_RES);
+
+	lv_obj_t *cont = lv_cont_create(dark_bg, NULL);
+	lv_cont_set_fit(cont, false, true);
+	lv_obj_set_width(cont, LV_HOR_RES * 5 / 10);
+
+	lv_obj_t *lbl = lv_label_create(cont, NULL);
+	lv_label_set_recolor(lbl, true);
+	lv_label_set_text(lbl,
+		"Display refresh rate in #C7EA46 Hz#.\n"
+		"#FF8000 45# to #FF8000 65#. Applied on next boot.");
+	lv_obj_align(lbl, NULL, LV_ALIGN_IN_TOP_LEFT, LV_DPI / 8, LV_DPI / 8);
+
+	lv_obj_t *ta = lv_ta_create(cont, NULL);
+	lv_ta_set_one_line(ta, true);
+	lv_ta_set_cursor_type(ta, LV_CURSOR_LINE);
+	lv_ta_set_max_length(ta, 2);
+
+	char cur[16];
+	s_printf(cur, "%d", h_cfg.display_refresh_rate);
+	lv_ta_set_text(ta, cur);
+	lv_obj_set_width(ta, LV_HOR_RES * 4 / 10);
+	lv_obj_align(ta, lbl, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 4);
+	display_rate_ta = ta;
+
+	lv_obj_t *kb = lv_kb_create(dark_bg, NULL);
+	lv_kb_set_ta(kb, ta);
+	lv_kb_set_mode(kb, LV_KB_MODE_NUM);
+	lv_kb_set_cursor_manage(kb, true);
+	lv_kb_set_ok_action(kb, _display_rate_kb_ok_action);
+	lv_kb_set_hide_action(kb, _display_rate_kb_close_action);
+	lv_obj_set_size(kb, LV_HOR_RES, LV_VER_RES * 2 / 5);
+	lv_obj_align(kb, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+
+	lv_obj_align(cont, kb, LV_ALIGN_OUT_TOP_MID, 0, -LV_DPI / 4);
+	lv_obj_set_top(cont, true);
+
+	return LV_RES_OK;
+}
+
 static void _check_nyx_changes()
 {
 	if (nyx_changes_made)
@@ -2136,6 +2284,80 @@ static void _create_tab_options_advanced(lv_theme_t *th, lv_obj_t *parent)
 	lv_obj_align(label_bpmp_hint, label_bpmp, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 2);
 
 	lv_obj_align(h2, h1, LV_ALIGN_OUT_RIGHT_TOP, LV_DPI / 2, 0);
+
+	lv_obj_t *h3 = lv_cont_create(parent, NULL);
+	lv_cont_set_style(h3, &h_style);
+	lv_cont_set_fit(h3, false, true);
+	lv_obj_set_width(h3, (LV_HOR_RES / 9) * 4);
+	lv_obj_set_click(h3, false);
+	lv_cont_set_layout(h3, LV_LAYOUT_OFF);
+
+	label_sep = lv_label_create(h3, NULL);
+	lv_label_set_static_text(label_sep, "");
+
+	label_txt = lv_label_create(h3, NULL);
+	lv_label_set_static_text(label_txt, "Refresh Rate");
+	lv_obj_set_style(label_txt, th->label.prim);
+	lv_obj_align(label_txt, label_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, -LV_DPI * 3 / 10);
+
+	line_sep = lv_line_create(h3, NULL);
+	lv_line_set_points(line_sep, line_pp, 2);
+	lv_line_set_style(line_sep, th->line.decor);
+	lv_obj_align(line_sep, label_txt, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);
+
+	lv_obj_t *btn_rate = lv_btn_create(h3, NULL);
+	display_rate_lbl = lv_label_create(btn_rate, NULL);
+	lv_btn_set_fit(btn_rate, true, true);
+	_display_rate_update_label();
+	lv_obj_align(btn_rate, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 8);
+	lv_btn_set_action(btn_rate, LV_BTN_ACTION_CLICK, _display_rate_btn_action);
+
+	lv_obj_t *label_rate_hint = lv_label_create(h3, NULL);
+	lv_label_set_recolor(label_rate_hint, true);
+	lv_label_set_static_text(label_rate_hint,
+		"Panel refresh rate, 60 Hz is stock.\n"
+		"#FF8000 Above 60 Hz is not supported by every console.#");
+	lv_obj_set_style(label_rate_hint, &hint_small_style);
+	lv_obj_align(label_rate_hint, btn_rate, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 12);
+
+	lv_obj_align(h3, h1, LV_ALIGN_OUT_BOTTOM_LEFT, 0, LV_DPI / 4);
+
+	lv_obj_t *h4 = lv_cont_create(parent, NULL);
+	lv_cont_set_style(h4, &h_style);
+	lv_cont_set_fit(h4, false, true);
+	lv_obj_set_width(h4, (LV_HOR_RES / 9) * 4);
+	lv_obj_set_click(h4, false);
+	lv_cont_set_layout(h4, LV_LAYOUT_OFF);
+
+	label_sep = lv_label_create(h4, NULL);
+	lv_label_set_static_text(label_sep, "");
+
+	label_txt = lv_label_create(h4, NULL);
+	lv_label_set_static_text(label_txt, "Tests");
+	lv_obj_set_style(label_txt, th->label.prim);
+	lv_obj_align(label_txt, label_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, -LV_DPI * 3 / 10);
+
+	line_sep = lv_line_create(h4, NULL);
+	lv_line_set_points(line_sep, line_pp, 2);
+	lv_line_set_style(line_sep, th->line.decor);
+	lv_obj_align(line_sep, label_txt, LV_ALIGN_OUT_BOTTOM_LEFT, -(LV_DPI / 4), LV_DPI / 8);
+
+	lv_obj_t *btn_disp_timing = lv_btn_create(h4, NULL);
+	lv_obj_t *label_btn_disp = lv_label_create(btn_disp_timing, NULL);
+	lv_btn_set_fit(btn_disp_timing, true, true);
+	lv_label_set_static_text(label_btn_disp, SYMBOL_REFRESH" Display Timing");
+	lv_obj_align(btn_disp_timing, line_sep, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 8);
+	lv_btn_set_action(btn_disp_timing, LV_BTN_ACTION_CLICK, _display_timing_action);
+
+	lv_obj_t *label_disp_hint = lv_label_create(h4, NULL);
+	lv_label_set_recolor(label_disp_hint, true);
+	lv_label_set_static_text(label_disp_hint,
+		"Times the display controller's frames.\n"
+		"#C7EA46 Measures the controller, not the panel.#");
+	lv_obj_set_style(label_disp_hint, &hint_small_style);
+	lv_obj_align(label_disp_hint, btn_disp_timing, LV_ALIGN_OUT_BOTTOM_LEFT, LV_DPI / 4, LV_DPI / 12);
+
+	lv_obj_align(h4, h3, LV_ALIGN_OUT_RIGHT_TOP, LV_DPI / 2, 0);
 }
 
 void create_tab_options(lv_theme_t *th, lv_obj_t *parent)

@@ -784,6 +784,8 @@ static void _auto_launch()
 						h_cfg.updater2p   = atoi(kv->val);
 					else if (!strcmp("bootprotect",   kv->key))
 						h_cfg.bootprotect = atoi(kv->val);
+					else if (!strcmp("display_refresh_rate", kv->key))
+						h_cfg.display_refresh_rate = atoi(kv->val);
 				}
 				boot_entry_id++;
 
@@ -1431,6 +1433,35 @@ menu_t menu_top = { ment_top, "hocate v2.5.0", 0, 0 };
 
 extern void pivot_stack(u32 stack_top);
 
+static void _load_display_refresh_rate()
+{
+	if (h_cfg.errors & ERR_SD_BOOT_EN)
+		return;
+
+	LIST_INIT(cfg_sections);
+
+	if (ini_parse(&cfg_sections, "bootloader/hekate_ipl.ini", false))
+		return;
+
+	LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, &cfg_sections, link)
+	{
+		if (ini_sec->type != INI_CHOICE || strcmp(ini_sec->name, "config"))
+			continue;
+
+		LIST_FOREACH_ENTRY(ini_kv_t, kv, &ini_sec->kvs, link)
+		{
+			if (!strcmp("display_refresh_rate", kv->key))
+				h_cfg.display_refresh_rate = atoi(kv->val);
+		}
+
+		break;
+	}
+
+	ini_free(&cfg_sections);
+
+	display_set_refresh_rate(h_cfg.display_refresh_rate);
+}
+
 void ipl_main()
 {
 	// Override DRAM ID if needed.
@@ -1463,15 +1494,16 @@ void ipl_main()
 	// Prep RTC regs for read. Needed for T210B01 R2C.
 	max77620_rtc_prep_read();
 
-	// Initialize display.
-	display_init();
-
 	// Overclock BPMP.
 	bpmp_clk_rate_set(h_cfg.t210b01 ? ipl_ver.rcfg.bclk_t210b01 : ipl_ver.rcfg.bclk_t210);
 
-	// Mount SD Card.
+	// Mount SD Card. The failure is reported later if it occurs
 	if (sd_mount())
 		h_cfg.errors |= ERR_SD_BOOT_EN;
+
+	// Initialize display.
+	_load_display_refresh_rate();
+	display_init();
 
 	// Check if watchdog was fired previously.
 	if (watchdog_fired())

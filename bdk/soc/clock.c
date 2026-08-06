@@ -484,12 +484,16 @@ static void _clock_pll_wait_lock(u32 base, u32 max_delay)
 
 void clock_enable_plld(u32 divp, u32 divn, bool lowpower, bool tegra_t210)
 {
+	// PLLD_SDM_DIN: -1024 -> DIVN + 0.375. 2730 -> DIVN + 0.833.
+	clock_enable_plld_sdm(divp, divn, (lowpower && tegra_t210) ? 0x0AAA : 0xFC00, tegra_t210);
+}
+
+void clock_enable_plld_sdm(u32 divp, u32 divn, u16 sdm, bool tegra_t210)
+{
 	u32 plld_div = (divp << 20) | (divn << 11) | 1;
 
 	// N divider is fractional, so N = DIVN + 1/2 + PLLD_SDM_DIN/8192.
-	u32 misc = BIT(21) | BIT(19) | BIT(18) | BIT(16) | 0xFC00; // Clock enable and PLLD_SDM_DIN: -1024 -> DIVN + 0.375.
-	if (lowpower && tegra_t210)
-		misc = BIT(21) | BIT(19) | BIT(18) | BIT(16) | 0x0AAA; // Clock enable and PLLD_SDM_DIN:  2730 -> DIVN + 0.833.
+	u32 misc = BIT(21) | BIT(19) | BIT(18) | BIT(16) | sdm; // Clock enable and PLLD_SDM_DIN.
 
 	// Set DISP1 clock source.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_DISP1) = 2 << 29u; // PLLD_OUT0.

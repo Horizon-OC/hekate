@@ -36,6 +36,7 @@ void set_default_configuration()
 	h_cfg.autonogc      = 1;
 	h_cfg.updater2p     = 0;
 	h_cfg.bootprotect   = 0;
+	h_cfg.display_refresh_rate = 60;
 
 	h_cfg.errors = 0;
 	h_cfg.eks = NULL;
@@ -135,6 +136,12 @@ int create_config_entry()
 
 	f_puts("\nbootprotect=", &fp);
 	itoa(h_cfg.bootprotect, lbuf, 10);
+	f_puts(lbuf, &fp);
+
+	if (h_cfg.display_refresh_rate < DI_REFRESH_RATE_MIN || h_cfg.display_refresh_rate > DI_REFRESH_RATE_MAX)
+		h_cfg.display_refresh_rate = 60;
+	f_puts("\ndisplay_refresh_rate=", &fp);
+	itoa(h_cfg.display_refresh_rate, lbuf, 10);
 	f_puts(lbuf, &fp);
 
 	f_puts("\n", &fp);

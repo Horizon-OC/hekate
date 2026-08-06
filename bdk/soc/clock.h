@@ -734,6 +734,7 @@ void clock_enable_extperiph2();
 void clock_disable_extperiph2();
 
 void clock_enable_plld(u32 divp, u32 divn, bool lowpower, bool tegra_t210);
+void clock_enable_plld_sdm(u32 divp, u32 divn, u16 sdm, bool tegra_t210);
 void clock_enable_pllx();
 void clock_enable_pllc(u32 divn);
 void clock_disable_pllc();
