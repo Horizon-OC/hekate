@@ -1490,7 +1490,8 @@ void ipl_main()
 
 	// Set charger input current limit
 	bq24193_set_input_current_limit(fuse_read_hw_type() == FUSE_NX_HW_TYPE_HOAG ? 900 : 1200);
-
+	bq24193_set_fast_charge_current_limit(fuse_read_hw_type() == FUSE_NX_HW_TYPE_HOAG ? 1664 : 2048);
+	
 	// Prep RTC regs for read. Needed for T210B01 R2C.
 	max77620_rtc_prep_read();
 

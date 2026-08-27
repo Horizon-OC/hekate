@@ -119,6 +119,7 @@ enum BQ24193_reg_prop {
 int  bq24193_get_version(u32 *value);
 int  bq24193_get_property(enum BQ24193_reg_prop prop, int *value);
 void bq24193_set_input_current_limit(int ma);
+void bq24193_set_fast_charge_current_limit(int ma);
 void bq24193_enable_charger();
 void bq24193_fake_battery_removal();
 

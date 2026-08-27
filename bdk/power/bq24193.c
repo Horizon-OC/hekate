@@ -189,6 +189,47 @@ void bq24193_set_input_current_limit(int ma)
 	i2c_send_byte(I2C_1, BQ24193_I2C_ADDR, BQ24193_InputSource, reg);
 }
 
+// 512-4544mA in 64mA steps.
+#define BQ24193_FCHG_MA_MIN  512
+#define BQ24193_FCHG_MA_MAX 4544
+#define BQ24193_FCHG_MA_STEP  64
+
+static u8 bq24193_fast_charge_current_to_reg(int ma)
+{
+	u8 reg = 0;
+
+	if (ma > BQ24193_FCHG_MA_MAX)
+		ma = BQ24193_FCHG_MA_MAX;
+	if (ma < 0)
+		ma = 0;
+
+	bool pct20 = ma <= (BQ24193_FCHG_MA_MIN - BQ24193_FCHG_MA_STEP);
+	if (pct20)
+	{
+		ma *= 5; // Undo the 20% scale
+		reg |= BQ24193_CHRGCURR_20PCT_MASK;
+	}
+
+	ma -= ma % 100; // Round down to 100mA precision.
+	if (ma < (BQ24193_FCHG_MA_MIN - BQ24193_FCHG_MA_STEP))
+		ma = BQ24193_FCHG_MA_MIN - BQ24193_FCHG_MA_STEP;
+	ma -= (BQ24193_FCHG_MA_MIN - BQ24193_FCHG_MA_STEP);
+
+	reg |= ((ma / BQ24193_FCHG_MA_STEP) << 2) & BQ24193_CHRGCURR_ICHG_MASK;
+
+	return reg;
+}
+
+void bq24193_set_fast_charge_current_limit(int ma)
+{
+	u8 reg = bq24193_get_reg(BQ24193_ChrgCurr);
+
+	reg &= ~(BQ24193_CHRGCURR_ICHG_MASK | BQ24193_CHRGCURR_20PCT_MASK);
+	reg |= bq24193_fast_charge_current_to_reg(ma);
+
+	i2c_send_byte(I2C_1, BQ24193_I2C_ADDR, BQ24193_ChrgCurr, reg);
+}
+
 void bq24193_enable_charger()
 {
 	u8 reg = bq24193_get_reg(BQ24193_PORConfig);
