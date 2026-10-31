@@ -543,6 +543,69 @@ void display_dsi_vblank_write(u8 cmd, u32 len, void *data)
 	_display_dsi_wait_vblank(false);
 }
 
+static void _display_aula_hs_refresh_init()
+{
+	const bool high_speed     = _di_refresh_rate > 64;
+	const u8 test_key_on[]    = { 0x5A, 0x5A };
+	const u8 test_key_off[]   = { 0xA5, 0xA5 };
+	const u8 freq_update      = 0x0F;
+	const u8 op_mode          = _di_refresh_rate == 120 ? 0x00 : high_speed ? 0x01 : 0x18;
+	const u8 elvss_enable_lo  = high_speed ? 0x76 : 0x7C;
+	const u8 elvss_param_hi   = high_speed ? 0x01 : 0x02;
+	const u8 elvss_param_lo   = high_speed ? 0xCC : 0x2C;
+
+	// L3 and grp4 unlock. Each packet must remain a separate E2 write.
+	display_dsi_write(MIPI_DCS_PRIV_SM_SET_REGS_LOCK, 6,
+		(u8[]){ 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A });
+	display_dsi_write(MIPI_DCS_PRIV_SM_SET_REGS_LOCK, 8,
+		(u8[]){ 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A });
+	display_dsi_write(MIPI_DCS_PRIV_SM_SET_REGS_LOCK, 10,
+		(u8[]){ 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A });
+	display_dsi_write(MIPI_DCS_PRIV_SM_SET_REGS_LOCK, 12,
+		(u8[]){ 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A });
+	display_dsi_write(MIPI_DCS_PRIV_SM_SET_REGS_LOCK, 8,
+		(u8[]){ 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0xA5, 0xA5 });
+	display_dsi_write(MIPI_DCS_PRIV_SM_SET_REGS_LOCK, 8,
+		(u8[]){ 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x00 });
+
+	// grp5 unlock, required with L3/grp4
+	display_dsi_write(MIPI_DCS_PRIV_SM_SET_REGS_LOCK, 9,
+		(u8[]){ 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A });
+
+	display_dsi_write(0xF0, 2, (void *)test_key_on);
+
+	// Mode set, operating mode
+	display_dsi_write(0xF2, 1, (u8[]){ 0x01 });
+	display_dsi_write(0x60, 1, (void *)&op_mode);
+	display_dsi_write(0xF7, 1, (void *)&freq_update);
+
+	// Enable ELVSS compensation
+	display_dsi_write(0xB0, 3, (u8[]){ 0x01, elvss_enable_lo, 0x94 });
+	display_dsi_write(0x94, 1, (u8[]){ 0x02 });
+
+	// Compensation uses a separate parameter
+	display_dsi_write(0xB0, 3, (u8[]){ elvss_param_hi, elvss_param_lo, 0x94 });
+	display_dsi_write(0x94, 3, (u8[]){ 0x03, 0x02, 0x01 });
+
+	// HS mode with FFC/OSC adjustment.
+	display_dsi_write(0xB0, 1, (u8[]){ 0x00 });
+	display_dsi_write(0xC5, 2, (u8[]){ 0x01, 0xFF });
+
+	// Fixed-frequency manual mode
+	display_dsi_write(0xBD, 1, (u8[]){ 0x21 });
+
+	// program the HS TE width.
+	display_dsi_write(0xB9, 1, (u8[]){ 0x04 });
+	display_dsi_write(0xB0, 3, (u8[]){ 0x00, 0x04, 0xB9 });
+	display_dsi_write(0xB9, 12,
+		(u8[]){ 0x0C, 0x42, 0x00, 0x1B, 0x0C, 0x42, 0x00, 0x1B, 0x0C, 0x42, 0x00, 0x1B });
+
+	// Apply compensation, frame control and TE configuration together.
+	display_dsi_write(0xF7, 1, (void *)&freq_update);
+
+	display_dsi_write(0xF0, 2, (void *)test_key_off);
+}
+
 void display_init()
 {
 	// Get Hardware type, as it's used in various DI functions.
@@ -691,6 +754,8 @@ void display_init()
 		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM, MIPI_DCS_PRIV_SM_SET_REG_OFFSET | (7 << 8), 0);
 		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM, MIPI_DCS_PRIV_SM_SET_ELVSS      | (6 << 8), 0);
 
+		_display_aula_hs_refresh_init();
+
 		// Relock Level 2 registers.
 		DSI(DSI_WR_DATA) = 0x539;      // MIPI_DSI_DCS_LONG_WRITE: 5 bytes.
 		DSI(DSI_WR_DATA) = 0xA55A5AE2; // MIPI_DCS_PRIV_SM_SET_REGS_LOCK: Lock Level 2 registers.
@@ -699,7 +764,7 @@ void display_init()
 
 		// Set backlight to 0%.
 		DSI(DSI_WR_DATA) = 0x339;    // MIPI_DSI_DCS_LONG_WRITE: 3 bytes.
-		DSI(DSI_WR_DATA) = 0x000051; // MIPI_DCS_SET_BRIGHTNESS 0000: 0%. FF07: 100%.
+		DSI(DSI_WR_DATA) = 0x07FF51; // MIPI_DCS_SET_BRIGHTNESS 0000: 0%. FF07: 100%.
 		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 		usleep(5000);
 		break;
