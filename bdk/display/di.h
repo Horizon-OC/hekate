@@ -870,7 +870,7 @@ void display_backlight_pwm_init();
 void display_end();
 
 #define DI_REFRESH_RATE_MIN 45
-#define DI_REFRESH_RATE_MAX 120
+#define DI_REFRESH_RATE_MAX 65
 
 void display_set_refresh_rate(u32 hz);
 u32  display_get_refresh_rate();
